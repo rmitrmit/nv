@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Check, ChevronLeft, ChevronRight, TicketPercent } from 'lucide-react';
 import Link from 'next/link';
@@ -89,7 +89,7 @@ const StepDivider = ({ isActive }: { isActive: boolean }) => (
     />
 );
 
-export default function ChangeLyricsPage() {
+export default function ReviewPage() {
     // Get URL parameters
     const searchParams = useSearchParams();
     const songId = searchParams.get('id');
@@ -508,5 +508,18 @@ export default function ChangeLyricsPage() {
                 </section>
             </div>
         </main>
+    );
+}
+
+// Main component that wraps the content with Suspense
+export default function ReviewPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-screen">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }>
+            <ChangeLyricsPageContent />
+        </Suspense>
     );
 }
