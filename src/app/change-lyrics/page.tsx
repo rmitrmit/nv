@@ -219,8 +219,13 @@ function ChangeLyricsPageContent() {
 
     // Update cost whenever word changes are modified
     useEffect(() => {
+        let additionalCost = 0;
         const baseCost = 35;
-        const additionalCost = totalWordChanges * 5;
+
+        if (totalWordChanges > 1) {
+            additionalCost = totalWordChanges * 5; // Removed `let`, so it updates the outer variable
+        }
+
         setCost(baseCost + additionalCost);
     }, [totalWordChanges]);
 
