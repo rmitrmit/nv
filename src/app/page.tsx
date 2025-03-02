@@ -7,7 +7,6 @@ import { Search, Clock, X, Link, ChevronRight } from 'lucide-react';
 import React from "react";
 import { useRouter } from 'next/navigation';
 import * as Tabs from '@radix-ui/react-tabs';
-import * as ScrollArea from '@radix-ui/react-scroll-area';
 import * as Form from '@radix-ui/react-form';
 import { Toaster, toast } from 'sonner';
 import SignInToSaveButton from "@/components/SignInToSaveButton";
@@ -126,33 +125,27 @@ const SearchResults = ({ results, isLoading, onSelect }: {
     }
 
     return (
-        <ScrollArea.Root className="relative overflow-hidden flex-1 w-full rounded-md border bg-white max-h-[calc(100vh-20rem)] md:max-h-[calc(100vh-22rem)]">
-            <ScrollArea.Viewport className="size-full rounded-[inherit]">
-                <div>
-                    {results.map((song, index) => (
-                        <React.Fragment key={song.id}>
-                            <div className="relative cursor-pointer p-3 md:p-4 dark:bg-gray-900 hover:bg-gray-200/20 transition-colors" onClick={() => onSelect(song)}>
-                                <div className="pr-12">
-                                    <h5 className="scroll-m-20 font-azbuka tracking-normal dark:text-white text-sm md:text-base text-primary truncate">
-                                        {song.title}
-                                    </h5>
-                                    <p className="scroll-m-20 font-roboto font-normal tracking-wide dark:text-white text-xs md:text-sm text-muted truncate">
-                                        {song.artist}
-                                    </p>
-                                </div>
+        <div className="relative overflow-hidden flex-1 w-full rounded-md border bg-white max-h-[calc(100vh-20rem)] md:max-h-[calc(100vh-22rem)] overflow-y-auto">
+            <div className="min-w-full">
+                {results.map((song, index) => (
+                    <React.Fragment key={song.id}>
+                        <div className="relative cursor-pointer p-3 md:p-4 hover:bg-gray-200/20 transition-colors border-2 border-spacing-0 -mb-1" onClick={() => onSelect(song)}>
+                            <div className="pr-12">
+                                <h5 className="scroll-m-20 font-azbuka tracking-normal text-sm md:text-base text-primary truncate">
+                                    {song.title}
+                                </h5>
+                                <p className="scroll-m-20 font-roboto font-normal tracking-wide text-xs md:text-sm text-muted truncate">
+                                    {song.artist}
+                                </p>
                             </div>
-                            {index < results.length - 1 && (
-                                <div className="shrink-0 bg-gray-200 dark:bg-gray-100/5 h-[1.5px] w-full"></div>
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
-            </ScrollArea.Viewport>
-            <ScrollArea.Scrollbar orientation="vertical" className="flex select-none touch-none p-0.5 bg-black/5 transition-colors duration-150 ease-out hover:bg-black/10 data-[orientation=vertical]:w-2.5 data-[orientation=horizontal]:flex-col data-[orientation=horizontal]:h-2.5">
-                <ScrollArea.Thumb className="flex-1 bg-black/20 rounded-full relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[44px] before:min-h-[44px]" />
-            </ScrollArea.Scrollbar>
-            <ScrollArea.Corner className="bg-black/5" />
-        </ScrollArea.Root>
+                        </div>
+                        {index < results.length - 1 && (
+                            <div data-orientation="horizontal" role="none" className="shrink-0 bg-gray-200 dark:bg-gray-100/5 h-[1.5px] w-full"></div>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+        </div>
     );
 };
 
@@ -242,7 +235,7 @@ const SearchPanel = () => {
                                 className="flex w-full rounded-md border border-component-input
                                 h-10 md:h-12 pl-10 pr-8 text-sm md:text-base text-primary
                                 bg-foundation px-3 py-1 shadow-sm shadow-black/10 transition-colors text-gray-900
-                                dark:bg-foundation-secondary dark:text-white dark:placeholder:text-muted/75
+                                dark:bg-foundation-secondary dark:placeholder:text-muted/75
                                 focus-visible:outline-none focus-visible:ring focus-visible:ring-secondary/50"
                                 type="text"
                                 placeholder="Search for a Song..."
@@ -381,7 +374,7 @@ const ManualEntryPanel = () => {
     return (
         <div className="py-6 mt-4 flex flex-1 flex-col gap-4">
             <Form.Root className="flex flex-col gap-4" onSubmit={handleSubmit}>
-                <p className="scroll-m-20 font-roboto font-normal tracking-wide dark:text-white text-sm md:text-base text-white">
+                <p className="scroll-m-20 font-roboto font-normal tracking-wide text-sm md:text-base text-white">
                     Please add the URL of the original song. <a className="font-semibold text-white underline" href="https://youtube.com/" target="_blank">Search YouTube</a> or use a cloud storage link.
                 </p>
 
@@ -395,7 +388,7 @@ const ManualEntryPanel = () => {
                                     file:border-0 file:bg-transparent file:p-0 file:text-sm file:font-medium 
                                     file:text-foundation-foreground placeholder:text-muted focus-visible:outline-none 
                                     focus-visible:ring focus-visible:ring-secondary/50 disabled:cursor-not-allowed 
-                                    disabled:opacity-50 dark:bg-foundation-secondary dark:text-white 
+                                    disabled:opacity-50 dark:bg-foundation-secondary 
                                     dark:placeholder:text-muted/75 h-10 md:h-12 pl-10 text-sm md:text-base text-primary"
                                 placeholder="https://..."
                                 type="text"
@@ -422,10 +415,10 @@ const ManualEntryPanel = () => {
                             className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 
                                 ring-offset-foundation placeholder:text-muted focus-visible:outline-none 
                                 focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed 
-                                disabled:opacity-50 dark:bg-foundation-secondary dark:text-white text-sm 
+                                disabled:opacity-50 dark:bg-foundation-secondary  text-sm 
                                 md:text-base text-primary min-h-[200px] md:min-h-[300px] resize-y"
                             placeholder="Paste the original lyrics here..."
-                            rows={10}
+                            rows={15}
                             name="lyrics"
                             value={formValues.lyrics}
                             onChange={handleInputChange}
@@ -480,7 +473,8 @@ export default function LyricChangerPage() {
                             marginTop: "7rem",
                             padding: "16px",
                             color: "oklch(0.396 0.141 25.723)",
-                            backgroundColor: "oklch(0.971 0.013 17.38)"
+                            backgroundColor: "oklch(0.971 0.013 17.38)",
+                            fontSize: "1.15rem"
                         },
                     }}
                 />

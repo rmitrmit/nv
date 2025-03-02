@@ -21,10 +21,11 @@ type StepProps = {
 };
 
 type WordChange = {
-    hasChanged: boolean;
     originalWord: string;
-    newWord?: string; // Optional, for cases like deletions
-    originalIndex?: number; // Optional, useful for inserting deletion symbols
+    newWord: string;
+    originalIndex: number;
+    newIndex: number; // Add this property
+    hasChanged: boolean;
 };
 
 type LyricLine = {
@@ -82,23 +83,93 @@ const StepDivider = ({ isActive }: { isActive: boolean }) => (
 
 // Utility functions
 function calculateWordChanges(original: string, modified: string): WordChange[] {
-    const originalWords = original.split(' ');
-    const modifiedWords = modified.split(' ');
-    const maxLength = Math.max(originalWords.length, modifiedWords.length);
-    const wordChanges: WordChange[] = [];
+    // Helper function to remove punctuation for comparison
+    const sanitize = (word: string) => word.replace(/[^\w\d]/g, '').toLowerCase();
 
-    for (let i = 0; i < maxLength; i++) {
-        const originalWord = originalWords[i] || '';
-        const newWord = modifiedWords[i] || '';
-        wordChanges.push({
-            originalWord, // Renamed from `original`
-            newWord,      // Renamed from `modified`
-            originalIndex: i, // Added index for potential deletion handling
-            hasChanged: originalWord !== newWord,
-        });
+    // Normalize whitespace and split into words
+    const originalWords = original.match(/\S+/g) || [];
+    const modifiedWords = modified.match(/\S+/g) || [];
+
+    // Use LCS on sanitized words
+    const sanitizedOriginalWords = originalWords.map(sanitize);
+    const sanitizedModifiedWords = modifiedWords.map(sanitize);
+    const lcs = findLongestCommonSubsequence(sanitizedOriginalWords, sanitizedModifiedWords);
+
+    // Create mapping of changes
+    const wordChanges: WordChange[] = [];
+    let origIndex = 0;
+    let modIndex = 0;
+    let lcsIndex = 0;
+
+    while (origIndex < originalWords.length || modIndex < modifiedWords.length) {
+        const originalWord = originalWords[origIndex] || '';
+        const newWord = modifiedWords[modIndex] || '';
+
+        const sanitizedOrig = sanitizedOriginalWords[origIndex] || '';
+        const sanitizedNew = sanitizedModifiedWords[modIndex] || '';
+
+        if (lcsIndex < lcs.length && sanitizedOrig === lcs[lcsIndex] && sanitizedNew === lcs[lcsIndex]) {
+            wordChanges.push({ originalWord, newWord, originalIndex: origIndex, newIndex: modIndex, hasChanged: false });
+            origIndex++;
+            modIndex++;
+            lcsIndex++;
+        } else if (modIndex < modifiedWords.length && (lcsIndex >= lcs.length || sanitizedNew !== lcs[lcsIndex])) {
+            wordChanges.push({ originalWord: '', newWord, originalIndex: -1, newIndex: modIndex, hasChanged: true });
+            modIndex++;
+        } else if (origIndex < originalWords.length && (lcsIndex >= lcs.length || sanitizedOrig !== lcs[lcsIndex])) {
+            wordChanges.push({ originalWord, newWord: '', originalIndex: origIndex, newIndex: -1, hasChanged: true });
+            origIndex++;
+        }
     }
+
+    // **Step 2: Remove punctuation-only changes**
+    wordChanges.forEach(change => {
+        if (change.hasChanged && sanitize(change.originalWord) === sanitize(change.newWord)) {
+            change.hasChanged = false; // Mark it as unchanged
+        }
+    });
+
     return wordChanges;
 }
+
+
+
+function findLongestCommonSubsequence(arr1: string[], arr2: string[]): string[] {
+    const dp: number[][] = Array(arr1.length + 1)
+        .fill(null)
+        .map(() => Array(arr2.length + 1).fill(0));
+
+    // Fill the dp table
+    for (let i = 1; i <= arr1.length; i++) {
+        for (let j = 1; j <= arr2.length; j++) {
+            if (arr1[i - 1] === arr2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+
+    // Backtrack to find the sequence
+    const result: string[] = [];
+    let i = arr1.length;
+    let j = arr2.length;
+
+    while (i > 0 && j > 0) {
+        if (arr1[i - 1] === arr2[j - 1]) {
+            result.unshift(arr1[i - 1]);
+            i--;
+            j--;
+        } else if (dp[i - 1][j] > dp[i][j - 1]) {
+            i--;
+        } else {
+            j--;
+        }
+    }
+
+    return result;
+}
+
 
 function generateLyricsData(text: string): LyricLine[] {
     // Split by newlines and filter out empty lines
@@ -246,7 +317,7 @@ function ChangeLyricsPageContent() {
         };
     }, [songId, songUrl, isManualEntry, router]);
 
-    const handleLyricChange = (id: number, newText: string) => {
+    function handleLyricChange(id: number, newText: string) {
         setLyrics(prevLyrics => {
             const updatedLyrics = prevLyrics.map(line => {
                 if (line.id === id) {
@@ -255,42 +326,64 @@ function ChangeLyricsPageContent() {
                     const wordChanges = calculateWordChanges(line.original, normalizedText);
 
                     // Create a marked-up version of the modified text
-                    let markedText = normalizedText;
+                    // We'll use an array-based approach for precise highlighting
+                    const modifiedWords = normalizedText.split(' ').filter(word => word.length > 0);
+                    const markedWords = [...modifiedWords];
 
-                    // Split the modified text into words, properly handling spaces
-                    const modifiedWords = normalizedText.split(' ');
+                    // Track which positions have been marked as changed
+                    const markedPositions = new Set<number>();
 
-                    // Process word changes, starting from the end to avoid index issues
-                    const sortedChanges = [...wordChanges].sort((a, b) =>
-                        (b.originalIndex ?? 0) - (a.originalIndex ?? 0)
-                    );
-
-                    sortedChanges.forEach(change => {
-                        if (change.hasChanged) {
-                            if (change.newWord) {
-                                // Use proper word boundary in regex
-                                const safeWord = change.newWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape regex special chars
-                                const wordRegex = new RegExp(`\\b${safeWord}\\b`, 'g');
-
-                                // Only replace the exact word (not partial matches within other words)
-                                markedText = markedText.replace(wordRegex,
-                                    `<span class="text-red-600">${change.newWord}</span>`
-                                );
-                            } else if (change.originalWord && change.originalIndex !== undefined) {
-                                // Word was deleted - insert deletion symbol
-                                const deleteSymbol = `<span class="text-red-600">⌧</span>`;
-
-                                // Determine where to insert the deletion symbol based on word index
-                                const insertionIndex = change.originalIndex;
-
-                                if (insertionIndex <= modifiedWords.length) {
-                                    // Insert the deletion symbol at the appropriate word boundary
-                                    modifiedWords.splice(insertionIndex, 0, deleteSymbol);
-                                    markedText = modifiedWords.join(' ');
-                                }
+                    // Only mark words that were actually added or changed
+                    wordChanges.forEach(change => {
+                        if (change.hasChanged && change.newIndex !== undefined && change.newIndex >= 0) {
+                            if (change.newWord && !markedPositions.has(change.newIndex)) {
+                                markedWords[change.newIndex] =
+                                    `<span class="text-red-600">${change.newWord}</span>`;
+                                markedPositions.add(change.newIndex);
                             }
                         }
                     });
+
+                    // Handle deletions
+                    const deletions = wordChanges.filter(
+                        change => change.hasChanged && change.newWord === '' && change.originalWord !== ''
+                    );
+
+                    // Group deletions by position to avoid multiple deletion markers at the same spot
+                    const deletionPositions = new Map<number, number>();
+                    deletions.forEach(deletion => {
+                        // Find appropriate insertion point
+                        let insertPos = 0;
+                        // Count words that precede this deletion in original
+                        for (const change of wordChanges) {
+                            if (change.originalIndex !== undefined &&
+                                change.originalIndex < (deletion.originalIndex ?? 0) &&
+                                change.newIndex !== undefined && change.newIndex >= 0) {
+                                insertPos = Math.max(insertPos, change.newIndex + 1);
+                            }
+                        }
+
+                        // Increment count for this position
+                        deletionPositions.set(
+                            insertPos,
+                            (deletionPositions.get(insertPos) || 0) + 1
+                        );
+                    });
+
+                    // Insert deletion markers
+                    Array.from(deletionPositions.entries())
+                        .sort((a, b) => b[0] - a[0]) // Process from end to avoid shifting indices
+                        .forEach(([position, count]) => {
+                            const deleteSymbol = `<span class="text-red-600">⌧${count > 1 ? ` (${count})` : ''}</span>`;
+                            if (position <= markedWords.length) {
+                                markedWords.splice(position, 0, deleteSymbol);
+                            } else {
+                                // If position is beyond the end, append to the end
+                                markedWords.push(deleteSymbol);
+                            }
+                        });
+
+                    const markedText = markedWords.join(' ');
 
                     return {
                         ...line,
@@ -308,20 +401,11 @@ function ChangeLyricsPageContent() {
 
             return updatedLyrics;
         });
-    };
+    }
 
     const validateForm = () => {
         const errors: Record<string, string> = {};
         let isValid = true;
-
-        // Validate URL
-        if (!formValues.songUrl.trim()) {
-            errors.songUrl = 'A valid URL to the original song/lyrics is required';
-            isValid = false;
-        } else if (!formValues.songUrl.startsWith('http')) {
-            errors.songUrl = 'Please enter a valid URL starting with http:// or https://';
-            isValid = false;
-        }
 
         // Validate lyrics
         if (!formValues.lyrics.trim()) {
@@ -388,7 +472,8 @@ function ChangeLyricsPageContent() {
                             marginTop: "7rem",
                             padding: "16px",
                             color: "oklch(0.396 0.141 25.723)",
-                            backgroundColor: "oklch(0.971 0.013 17.38)"
+                            backgroundColor: "oklch(0.971 0.013 17.38)",
+                            fontSize: "1.15rem"
                         },
                     }}
                 />
@@ -455,12 +540,12 @@ function ChangeLyricsPageContent() {
 
                             {/* Navigation Buttons */}
                             <div className="flex flex-row items-center gap-2 py-0">
-                                <Link href="/" className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border-[1.5px] bg-white hover:text-black hover:ring-gray-200/65 focus-visible:ring focus-visible:ring-gray-200/65 active:bg-gray-200 active:ring-0 dark:border-gray-100/25 dark:text-white dark:hover:bg-gray-100/15 dark:hover:text-white dark:hover:ring-gray-100/15 dark:focus-visible:ring-gray-100/15 dark:active:bg-gray-100/25 px-5 rounded-md text-sm md:text-base h-10 md:h-12">
+                                <Link href="/" className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border-[1.5px] bg-white hover:bg-white/95 hover:ring-gray-200/65 focus-visible:ring focus-visible:ring-gray-200/65 active:bg-gray-200 active:ring-0  dark:hover:ring-gray-100/15 dark:focus-visible:ring-gray-100/15 dark:active:bg-gray-100/25 px-5 rounded-md text-sm md:text-base h-10 md:h-12">
                                     <ChevronLeft className="-ml-1 size-4 md:size-5" /> Back
                                 </Link>
                                 <button
                                     onClick={handleNextStep}
-                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
                                     type="button"
                                 >
                                     Change the Lyrics ${cost} <ChevronRight className="-mr-1 size-4 md:size-5" />
@@ -499,7 +584,7 @@ function ChangeLyricsPageContent() {
 
                             {/* Lyrics editor */}
                             {!isLoading && (
-                                <Form.Root className="flex flex-1 flex-col gap-4 pb-4" onSubmit={handleSubmit}>
+                                <Form.Root className="flex flex-1 flex-col gap-4 pb-6" onSubmit={handleSubmit}>
                                     <div className="mt-2 overflow-y-auto">
                                         <div className="relative w-full overflow-auto">
                                             <table className="caption-bottom text-sm relative h-10 w-full text-clip rounded-md">
@@ -516,7 +601,7 @@ function ChangeLyricsPageContent() {
                                                         // const hasChanges = line.wordChanges.some(w => w.hasChanged);
                                                         return (
                                                             <tr key={line.id} className="border-b transition-colors data-[state=selected]:bg-muted">
-                                                                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium text-sm md:text-base">
+                                                                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium text-sm md:text-base text-muted">
                                                                     {line.id}
                                                                 </td>
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base">
@@ -547,13 +632,13 @@ function ChangeLyricsPageContent() {
                                     </div>
 
                                     {/* Special requests */}
-                                    <label className="mb-1 flex scroll-m-20 tracking-normal peer-disabled:cursor-not-allowed peer-disabled:text-gray-500 peer-disabled:opacity-50 dark:text-white font-semibold text-white text-sm md:text-base">
-                                        Your Requests
-                                    </label>
-                                    <Form.Field name="specialRequests" className="mb-3.5 flex flex-col gap-0.5 last:mb-0 relative flex-1">
+                                    <Form.Field name="specialRequests" className="mt-2 flex flex-col gap-0.5 last:mb-0 relative flex-1">
+                                        <label className="flex scroll-m-20 tracking-normal peer-disabled:cursor-not-allowed peer-disabled:text-gray-500 peer-disabled:opacity-50 dark:text-white font-semibold text-white text-sm md:text-base">
+                                            Your Requests
+                                        </label>
                                         <Form.Control asChild>
                                             <textarea
-                                                className="flex min-h-[80px] w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary dark:text-white text-sm md:text-base text-primary"
+                                                className="flex min-h-[80px] w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
                                                 rows={4}
                                                 value={specialRequests}
                                                 onChange={(e) => setSpecialRequests(e.target.value)}
@@ -566,7 +651,7 @@ function ChangeLyricsPageContent() {
 
                             {/* Tip Box */}
                             {!isLoading && (
-                                <div className="mt-4 md:mt-6 flex flex-col sm:flex-row items-start gap-3 rounded-lg bg-[#4B5EAA]/20 p-3 md:p-4">
+                                <div className="mt-4 md:mt-6 flex flex-col sm:flex-row items-start gap-3 rounded-lg bg-[#4B5EAA]/20 p-3 md:p-4 shadow-md border-blue-500 border">
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4B5EAA] text-lg flex-shrink-0">
                                         💡
                                     </div>
