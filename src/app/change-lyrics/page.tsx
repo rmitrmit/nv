@@ -223,7 +223,7 @@ function ChangeLyricsPageContent() {
         const baseCost = 35;
 
         if (totalWordChanges > 1) {
-            additionalCost = totalWordChanges * 5; // Removed `let`, so it updates the outer variable
+            additionalCost = (totalWordChanges-1) * 5; // Removed `let`, so it updates the outer variable
         }
 
         setCost(baseCost + additionalCost);
