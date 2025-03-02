@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ListMusic, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -115,8 +115,8 @@ function generateLyricsData(text: string): LyricLine[] {
     return lines;
 }
 
-
-export default function ChangeLyricsPage() {
+// Create a wrapper component that uses useSearchParams
+function ChangeLyricsPageContent() {
     // Get URL parameters
     const searchParams = useSearchParams();
     const songId = searchParams.get('id');
@@ -586,5 +586,18 @@ export default function ChangeLyricsPage() {
                 </section>
             </div>
         </main>
+    );
+}
+
+// Main component that wraps the content with Suspense
+export default function ChangeLyricsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-screen">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }>
+            <ChangeLyricsPageContent />
+        </Suspense>
     );
 }
