@@ -131,7 +131,7 @@ const SearchResults = ({ results, isLoading, onSelect }: {
                 <div>
                     {results.map((song, index) => (
                         <React.Fragment key={song.id}>
-                            <div className="relative cursor-pointer p-3 md:p-4 hover:bg-gray-200/20 transition-colors" onClick={() => onSelect(song)}>
+                            <div className="relative cursor-pointer p-3 md:p-4 dark:bg-gray-900 hover:bg-gray-200/20 transition-colors" onClick={() => onSelect(song)}>
                                 <div className="pr-12">
                                     <h5 className="scroll-m-20 font-azbuka tracking-normal dark:text-white text-sm md:text-base text-primary truncate">
                                         {song.title}
