@@ -437,7 +437,7 @@ function ReviewPageContent() {
                                         {productOptions
                                             .filter(product => product.type === 'delivery')
                                             .map((product) => (
-                                                <label key={product.id} className={`mb-1 scroll-m-20 text-sm font-normal leading-normal tracking-normal peer-disabled:cursor-not-allowed peer-disabled:text-gray-500 peer-disabled:opacity-50 dark:text-white flex cursor-pointer items-center justify-between rounded-lg ${product.isSelected ? 'border-2 border-primary' : 'border'} bg-white p-4 hover:border-primary`}>
+                                                <label key={product.id} className={`mb-1 scroll-m-20 text-sm font-normal leading-normal tracking-normal peer-disabled:cursor-not-allowed peer-disabled:text-gray-500 peer-disabled:opacity-50 text-blue-900 flex cursor-pointer items-center justify-between rounded-lg ${product.isSelected ? 'border-2 border-primary' : 'border'} bg-white p-4 hover:border-primary`}>
                                                     <div className="flex items-start gap-2 pr-2">
                                                         <button
                                                             type="button"
