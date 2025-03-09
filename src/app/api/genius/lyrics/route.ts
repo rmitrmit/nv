@@ -7,14 +7,14 @@ const allowedOrigins = [
     'http://localhost:3000',
     'https://evjbcx-s0.myshopify.com',
     'https://nv-prod.vercel.app',
-    'https://your-app.vercel.app',  // Add your Vercel deployment URL
+    'https://your-app.vercel.app', // Add your Vercel deployment URL
 ];
 
 export async function GET(req: NextRequest) {
     const songId = req.nextUrl.searchParams.get('id');
 
     if (!songId) {
-        console.error("Missing required parameter: id");
+        console.error('Missing required parameter: id');
         return new NextResponse(
             JSON.stringify({ error: 'The "id" parameter is required' }),
             { status: 400, headers: corsHeaders(req) }
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!GENIUS_BEARER) {
-        console.warn("GENIUS_BEARER is missing");
+        console.warn('GENIUS_BEARER is missing');
         return new NextResponse(
             JSON.stringify({ error: 'API key not configured on server' }),
             { status: 500, headers: corsHeaders(req) }
@@ -31,7 +31,12 @@ export async function GET(req: NextRequest) {
 
     try {
         const songResponse = await fetch(`https://api.genius.com/songs/${songId}`, {
-            headers: { Authorization: `Bearer ${GENIUS_BEARER}` },
+            headers: {
+                Authorization: `Bearer ${GENIUS_BEARER}`,
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                Referer: 'https://www.google.com/',
+            },
         });
 
         if (!songResponse.ok) {
@@ -84,10 +89,8 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
         }
 
         const html = await response.text();
-        console.log(html);
         const $ = cheerio.load(html);
         let lyricsText = '';
-        console.log($);
 
         const lyricsContainers = $('[data-lyrics-container="true"]');
         if (lyricsContainers.length > 0) {
@@ -134,3 +137,7 @@ function corsHeaders(req: NextRequest): Record<string, string> {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 }
+
+export const config = {
+    runtime: 'nodejs', // Ensure Node.js runtime (default for Next.js API routes)
+};
