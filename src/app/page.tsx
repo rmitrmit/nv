@@ -1,4 +1,3 @@
-// src\app\page.tsx
 "use client";
 
 import Image from 'next/image';
@@ -10,14 +9,9 @@ import * as Tabs from '@radix-ui/react-tabs';
 import * as Form from '@radix-ui/react-form';
 import { Toaster, toast } from 'sonner';
 import SignInToSaveButton from "@/components/SignInToSaveButton";
+import { StepIndicator, StepDivider, StepProps } from '@/components/layouts/StepNavigation';
 
 // Types
-type StepProps = {
-    step: number;
-    label: string;
-    isActive: boolean;
-};
-
 type Song = {
     id: string;
     title: string;
@@ -28,36 +22,6 @@ type ManualEntryFields = {
     songUrl: string;
     lyrics: string;
 }
-
-// Components
-const StepIndicator = ({ step, label, isActive }: StepProps) => (
-    <div className="flex flex-col items-center" style={{ opacity: 1, transform: 'translateY(2px)' }}>
-        <button
-            className="inline-flex items-center justify-center size-6 px-2 rounded-full
-        bg-primary text-primary-foreground hover:bg-primary/90 hover:ring-primary/50
-        disabled:bg-white/80 disabled:text-primary disabled:opacity-10
-        text-sm font-normal transition duration-150 peer"
-            disabled={!isActive}
-            type="button"
-            role="tab"
-        >
-            {step}
-        </button>
-        <p className="mt-2 text-center text-sm font-semibold text-white 
-      font-roboto leading-normal tracking-wide
-      peer-disabled:font-normal peer-disabled:opacity-10">
-            {label}
-        </p>
-    </div>
-);
-
-const StepDivider = () => (
-    <div
-        role="none"
-        className="w-full h-[1.75px] -mt-6 flex-1 bg-white/5 dark:bg-gray-100/5 
-      duration-1000 animate-in fade-in"
-    />
-);
 
 const InfoCard = () => (
     <div className="relative w-full rounded-lg p-4 bg-primary/80 text-white/80 text-sm md:text-base dark:border-gray-100/5" role="alert">
@@ -365,9 +329,11 @@ const ManualEntryPanel = () => {
         } else {
             // Show toast with first error
             const firstError = Object.values(formErrors)[0];
-            toast.error('Invalid input', {
-                description: firstError || 'Please fix the errors in the form',
-            });
+            if (firstError) {
+                toast.error('Invalid input', {
+                    description: firstError,
+                });
+            }
         }
     };
 
@@ -375,7 +341,7 @@ const ManualEntryPanel = () => {
         <div className="py-6 mt-4 flex flex-1 flex-col gap-4">
             <Form.Root className="flex flex-col gap-4" onSubmit={handleSubmit}>
                 <p className="scroll-m-20 font-roboto font-normal tracking-wide text-sm md:text-base text-white">
-                    Please add the URL of the original song. <a className="font-semibold text-white underline" href="https://youtube.com/" target="_blank">Search YouTube</a> or use a cloud storage link.
+                    Please add the URL of the original song. <a className="font-semibold text-white underline" href="https://youtube.com/" target="_blank" rel="noopener noreferrer">Search YouTube</a> or use a cloud storage link.
                 </p>
 
                 <Form.Field className="mb-3.5 flex flex-col gap-0.5 last:mb-0 relative" name="songUrl">
@@ -406,7 +372,7 @@ const ManualEntryPanel = () => {
                 </Form.Field>
 
                 <p className="scroll-m-20 font-roboto font-normal tracking-wide dark:text-white text-sm md:text-base text-white">
-                    Please add the lyrics from the original song. <a className="font-semibold text-white underline" href="https://songmeanings.com/" target="_blank">Search for Lyrics</a>
+                    Please add the lyrics from the original song. <a className="font-semibold text-white underline" href="https://songmeanings.com/" target="_blank" rel="noopener noreferrer">Search for Lyrics</a>
                 </p>
 
                 <Form.Field className="mb-3.5 flex flex-col gap-0.5 last:mb-0 relative" name="lyrics">
@@ -452,15 +418,15 @@ const ManualEntryPanel = () => {
     );
 };
 
-// Finally, add the Toaster component to your main component:
+// Main component
 export default function LyricChangerPage() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [currentStep, setCurrentStep] = useState(1);
 
-    const steps = [
-        { step: 1, label: "Choose A Song" },
-        { step: 2, label: "Change The Lyrics" },
-        { step: 3, label: "Review" },
+    const steps: StepProps[] = [
+        { step: 1, label: "Choose A Song", isActive: currentStep === 1, isComplete: currentStep > 1 },
+        { step: 2, label: "Change The Lyrics", isActive: currentStep === 2, isComplete: currentStep > 2 },
+        { step: 3, label: "Review", isActive: currentStep === 3, isComplete: false },
     ];
 
     return (
@@ -479,7 +445,6 @@ export default function LyricChangerPage() {
                     }}
                 />
 
-                {/* Rest of your component remains the same */}
                 <section className="mx-auto w-full max-w-[1280px] flex flex-col space-y-4 px-6 sm:px-12 md:px-16 lg:px-32 xl:px-40 2xl:px-52">
                     {/* Header/Nav */}
                     <nav className="w-full bg-transparent px-4 pb-4">
@@ -489,7 +454,7 @@ export default function LyricChangerPage() {
                     </nav>
 
                     {/* Step Indicators */}
-                    <div className="flex flex-col space-y-4 md:space-y-6">
+                    <div className="flex flex-col space-y-4 md:space-y-6 pointer-events-none">
                         <section className="flex items-center gap-2">
                             {steps.map((step, index) => (
                                 <React.Fragment key={step.step}>
@@ -497,8 +462,11 @@ export default function LyricChangerPage() {
                                         step={step.step}
                                         label={step.label}
                                         isActive={currentStep === step.step}
+                                        isComplete={currentStep > step.step}
                                     />
-                                    {index < steps.length - 1 && <StepDivider key={`divider-${index}`} />}
+                                    {index < steps.length - 1 && (
+                                        <StepDivider isActive={currentStep > index + 1} />
+                                    )}
                                 </React.Fragment>
                             ))}
                         </section>
