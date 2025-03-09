@@ -79,10 +79,10 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour if using ISR
         if (!response.ok) {
-            console.error(`Failed to fetch lyrics page: ${response.status}`);
+            console.error(`Error fetching lyrics from ${url}: ${response.status} ${response.statusText}. Possible reasons: incorrect URL, API rate limits, or server issues.`);
             return 'Lyrics not found';
         }
-
+     
         const html = await response.text();
         const $ = cheerio.load(html);
         let lyricsText = '';
