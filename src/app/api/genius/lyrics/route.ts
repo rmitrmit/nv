@@ -1,9 +1,10 @@
-// api/lyrics.ts
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 
 const GENIUS_BEARER = process.env.GENIUS_BEARER;
-const CACHE_DURATION = 60 * 60 * 24 * 7;
+// Define CACHE_DURATION only if we use it
+const CACHE_DURATION = 60 * 60 * 24 * 7; // 7 days in seconds
+const lyricsCache: Record<string, { data: string; timestamp: number }> = {};
 
 export async function GET(req: NextRequest) {
     const songId = req.nextUrl.searchParams.get('id');
@@ -27,7 +28,15 @@ export async function GET(req: NextRequest) {
 }
 
 async function fetchLyricsFromGenius(url: string): Promise<string> {
-    // Optional: Use a proxy service
+    // Add caching logic to use CACHE_DURATION
+    const cacheKey = `lyrics_${url}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    if (lyricsCache[cacheKey] && now - lyricsCache[cacheKey].timestamp < CACHE_DURATION) {
+        console.log(`Cache hit for lyrics URL: ${url}`);
+        return lyricsCache[cacheKey].data;
+    }
+
     const proxyUrl = process.env.PROXY_URL ? `${process.env.PROXY_URL}?url=${encodeURIComponent(url)}` : url;
     
     const response = await fetchWithRetry(proxyUrl, {
@@ -40,8 +49,14 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
     
     const html = await response.text();
     const $ = cheerio.load(html);
-    let lyricsText = $('[data-lyrics-container="true"]').text().trim() || 'Lyrics not found';
+    const lyricsText = $('[data-lyrics-container="true"]').text().trim() || 'Lyrics not found'; // Use const
     
+    // Cache the result
+    lyricsCache[cacheKey] = {
+        data: lyricsText,
+        timestamp: now
+    };
+
     return lyricsText;
 }
 
