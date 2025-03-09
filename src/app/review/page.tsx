@@ -36,11 +36,9 @@ type LyricLine = {
 
 function OrderReviewPageContent() {
     const router = useRouter();
-    // Retrieve song data from localStorage
-    const songTitle = localStorage.getItem("songTitle") || "";
-    const songArtist = localStorage.getItem("songArtist") || "";
-    const songUrl = localStorage.getItem("songUrl") || "";
-
+    const [songTitle, setSongTitle] = useState("");
+    const [songArtist, setSongArtist] = useState("");
+    const [songUrl, setSongUrl] = useState("");
     const [currentStep, setCurrentStep] = useState(3);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [lyrics, setLyrics] = useState<LyricLine[]>([]);
@@ -69,6 +67,9 @@ function OrderReviewPageContent() {
     // Load data from localStorage
     useEffect(() => {
         try {
+            setSongTitle(localStorage.getItem("songTitle") || "");
+            setSongArtist(localStorage.getItem("songArtist") || "");
+            setSongUrl(localStorage.getItem("songUrl") || "");
             const storedLyrics = JSON.parse(localStorage.getItem("lyrics") || "[]");
             const storedCost = parseFloat(localStorage.getItem("cost") || "0");
             const storedSpecialRequests = localStorage.getItem("specialRequests") || "";
