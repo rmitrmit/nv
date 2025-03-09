@@ -134,7 +134,3 @@ function corsHeaders(req: NextRequest): Record<string, string> {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 }
-
-export const config = {
-    runtime: 'nodejs', // Ensure Node.js runtime (default for Next.js API routes)
-};
