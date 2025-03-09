@@ -481,11 +481,11 @@ export default function LyricChangerPage() {
 
                         {/* Tabs */}
                         <div className="flex-1">
-                            <Tabs.Root defaultValue="search" className="flex flex-col flex-1">
+                            <Tabs.Root defaultValue="manual" className="flex flex-col flex-1">
                                 <Tabs.List className="h-12 my-2 -mb-3 grid w-full grid-cols-2 gap-2 rounded-full p-0
                                     items-center justify-center text-muted-foreground bg-transparent
                                     dark:bg-foundation-secondary">
-                                    <Tabs.Trigger
+                                    {/* <Tabs.Trigger
                                         value="search"
                                         className="inline-flex h-11 items-center justify-center rounded-full px-3 py-1.5 
                                             font-medium ring-offset-foundation transition-all focus-visible:outline-none 
@@ -497,7 +497,7 @@ export default function LyricChangerPage() {
                                     >
                                         <Search className="mr-1.5 size-4 max-[380px]:hidden md:size-5 flex-shrink-0" />
                                         Quick Search
-                                    </Tabs.Trigger>
+                                    </Tabs.Trigger> */}
                                     <Tabs.Trigger
                                         value="manual"
                                         className="inline-flex h-11 items-center justify-center rounded-full px-3 py-1.5 
@@ -513,12 +513,12 @@ export default function LyricChangerPage() {
                                     </Tabs.Trigger>
                                 </Tabs.List>
 
-                                <Tabs.Content
+                                {/* <Tabs.Content
                                     value="search"
                                     className="ring-offset-foundation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 data-[state=inactive]:hidden"
                                 >
                                     <SearchPanel />
-                                </Tabs.Content>
+                                </Tabs.Content> */}
 
                                 <Tabs.Content
                                     value="manual"
