@@ -28,11 +28,13 @@ type GeniusResponse = {
 const allowedOrigins = [
     'http://localhost:3000',
     'https://evjbcx-s0.myshopify.com',
-    'nv-prod.vercel.app'
+    'https://nv-prod.vercel.app'
 ];
 
 export async function GET(req: NextRequest) {
     const query = req.nextUrl.searchParams.get('q');
+    const origin = req.headers.get('origin') || 'unknown';
+    console.log(`Request received - Query: ${query}, Origin: ${origin}`);
 
     if (!query) {
         console.error("Missing query parameter");
@@ -43,14 +45,18 @@ export async function GET(req: NextRequest) {
     }
 
     if (!GENIUS_BEARER) {
-        console.error("GENIUS_BEARER is missing");
+        console.error("GENIUS_BEARER environment variable is not set");
         return new NextResponse(
-            JSON.stringify({ error: 'Genius API token is not configured' }),
+            JSON.stringify({
+                error: 'Server configuration error',
+                details: 'Genius API token is not configured'
+            }),
             { status: 500, headers: corsHeaders(req) }
         );
     }
 
     try {
+        console.log(`Fetching from Genius API with query: ${query}`);
         const response = await fetch(`https://api.genius.com/search?q=${encodeURIComponent(query)}`, {
             headers: {
                 Authorization: `Bearer ${GENIUS_BEARER}`,
@@ -58,14 +64,20 @@ export async function GET(req: NextRequest) {
         });
 
         if (!response.ok) {
-            console.error(`Genius API request failed: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Genius API request failed: Status ${response.status}, Response: ${errorText}`);
             return new NextResponse(
-                JSON.stringify({ error: 'Failed to fetch from Genius API' }),
-                { status: response.status, headers: corsHeaders(req) }
+                JSON.stringify({
+                    error: 'Genius API request failed',
+                    status: response.status,
+                    details: errorText
+                }),
+                { status: 502, headers: corsHeaders(req) }
             );
         }
 
         const data: GeniusResponse = await response.json();
+        console.log(`Received ${data.response.hits.length} hits from Genius API`);
 
         // Transform the response to match our Song type
         const songs: Song[] = data.response.hits.map((hit) => ({
@@ -81,9 +93,24 @@ export async function GET(req: NextRequest) {
             { status: 200, headers: corsHeaders(req) }
         );
     } catch (error) {
-        console.error("Unexpected error:", error);
+        const errorDetails = error instanceof Error ? {
+            message: error.message,
+            stack: error.stack
+        } : { message: String(error) };
+
+        console.error("Unexpected error:", {
+            ...errorDetails,
+            query,
+            origin,
+            timestamp: new Date().toISOString()
+        });
+
         return new NextResponse(
-            JSON.stringify({ error: 'Internal Server Error' }),
+            JSON.stringify({
+                error: 'Internal Server Error',
+                details: errorDetails.message,
+                timestamp: new Date().toISOString()
+            }),
             { status: 500, headers: corsHeaders(req) }
         );
     }
@@ -93,6 +120,8 @@ export async function GET(req: NextRequest) {
 function corsHeaders(req: NextRequest): Record<string, string> {
     const origin = req.headers.get('origin');
     const allowedOrigin = allowedOrigins.includes(origin || '') ? origin : '';
+
+    console.log(`CORS check - Request origin: ${origin}, Allowed origin: ${allowedOrigin}`);
 
     return {
         'Content-Type': 'application/json',

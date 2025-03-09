@@ -326,17 +326,16 @@ const ManualEntryPanel = () => {
         return isValid;
     };
 
+    // In ManualEntryPanel
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
         if (validateForm()) {
-            // Store lyrics in localStorage to avoid URL length limitations
             localStorage.setItem('manualEntryLyrics', formValues.lyrics);
-
-            // Navigate to next step with just the URL and a flag
-            router.push(`/change-lyrics?url=${encodeURIComponent(formValues.songUrl)}&manualEntry=true`);
+            // Add a slight delay to ensure localStorage is written
+            setTimeout(() => {
+                router.push(`/change-lyrics?url=${encodeURIComponent(formValues.songUrl)}&manualEntry=true`);
+            }, 50); // 50ms delay
         } else {
-            // Show toast with first error
             const firstError = Object.values(formErrors)[0];
             if (firstError) {
                 toast.error('Invalid input', {
@@ -429,6 +428,10 @@ const ManualEntryPanel = () => {
 
 // Main component
 export default function LyricChangerPage() {
+    useEffect(() => {
+        localStorage.clear();
+    }, []); // Empty dependency array ensures this runs only once on mount
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [currentStep, setCurrentStep] = useState(1);
 

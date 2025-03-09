@@ -226,46 +226,48 @@ function ChangeLyricsPageContent() {
         setCost(BASE_COST + additionalChanges * ADDITIONAL_COST_PER_CHANGE);
     }, [totalWordChanges]);
 
-    // Check for manually entered lyrics from localStorage
+    // Manual Entry and Initial State Setup
     useEffect(() => {
         if (!isManualEntry) return;
 
         try {
             const storedLyrics = localStorage.getItem('manualEntryLyrics');
+            console.log('Retrieved manualEntryLyrics:', storedLyrics);
             if (storedLyrics) {
                 setOriginalLyricsText(storedLyrics);
                 setLyrics(generateLyricsData(storedLyrics));
                 setFormValues(prev => ({ ...prev, lyrics: storedLyrics }));
-                // Clear localStorage after retrieving
-                localStorage.removeItem('manualEntryLyrics');
+                console.log('Manual entry lyrics set successfully');
+                setIsLoading(false);
             } else {
                 setFormErrors(prev => ({
                     ...prev,
-                    general: 'No lyrics found. Please try again.'
+                    general: 'No lyrics found for manual entry. Please try again.'
                 }));
+                console.log('No manual entry lyrics found in localStorage');
+                setIsLoading(false);
             }
         } catch (error) {
-            console.error('Error retrieving lyrics from localStorage:', error);
+            console.error('Error retrieving manual entry lyrics from localStorage:', error);
             setFormErrors(prev => ({
                 ...prev,
-                general: 'Error loading lyrics. Please try again.'
+                general: 'Error loading manual entry lyrics. Please try again.'
             }));
+            setIsLoading(false);
         }
     }, [isManualEntry]);
 
-    // Fetch lyrics from API if songId is available
+    // Fetch Lyrics from API for Song ID
     useEffect(() => {
-        let isMounted = true; // For cleanup
+        let isMounted = true;
 
         const fetchLyricsById = async (id: string) => {
             try {
                 setIsLoading(true);
                 const response = await fetch(`/api/genius/lyrics?id=${id}`);
-
                 if (!response.ok) {
                     throw new Error(`API error: ${response.status}`);
                 }
-
                 const data = await response.json();
 
                 if (!isMounted) return;
@@ -274,9 +276,10 @@ function ChangeLyricsPageContent() {
                     setOriginalLyricsText(data.lyrics);
                     setLyrics(generateLyricsData(data.lyrics));
                     setFormValues(prev => ({ ...prev, lyrics: data.lyrics }));
+                    console.log('API lyrics fetched and set successfully');
                 } else {
                     setFormErrors(prev => ({ ...prev, general: 'Lyrics not found' }));
-                    console.error('Lyrics not found');
+                    console.error('Lyrics not found from API');
                 }
             } catch (error) {
                 if (!isMounted) return;
@@ -290,47 +293,45 @@ function ChangeLyricsPageContent() {
             }
         };
 
-        if (isManualEntry) {
-            setIsLoading(false);
-            return;
-        }
-
+        if (isManualEntry) return; // Skip API fetch for manual entry
         if (songId) {
             fetchLyricsById(songId);
         }
 
-        // Cleanup function
         return () => {
             isMounted = false;
         };
     }, [songId, isManualEntry, router]);
 
+    // State Restoration for Non-Manual Entry
     useEffect(() => {
+        if (isManualEntry) return; // Skip restoration for manual entry
+
         try {
-            const savedStep = parseInt(localStorage.getItem('currentStep') || '2', 10);
-            setCurrentStep(savedStep);
+            const savedStep = localStorage.getItem('currentStep');
+            if (savedStep) setCurrentStep(parseInt(savedStep, 10));
 
-            const savedLyrics = JSON.parse(localStorage.getItem('lyrics') || '[]');
-            setLyrics(savedLyrics);
+            const savedLyrics = localStorage.getItem('lyrics');
+            if (savedLyrics) {
+                setLyrics(JSON.parse(savedLyrics));
+                console.log('Restored saved lyrics:', JSON.parse(savedLyrics));
+            }
 
-            const savedRequests = localStorage.getItem('specialRequests') || '';
-            setSpecialRequests(savedRequests);
+            const savedRequests = localStorage.getItem('specialRequests');
+            if (savedRequests) setSpecialRequests(savedRequests);
 
-            const savedFormValues = JSON.parse(localStorage.getItem('formValues') || '{}');
-            setFormValues(savedFormValues);
+            const savedFormValues = localStorage.getItem('formValues');
+            if (savedFormValues) setFormValues(JSON.parse(savedFormValues));
 
-            const savedCost = parseFloat(localStorage.getItem('cost') || '35');
-            setCost(savedCost);
+            const savedCost = localStorage.getItem('cost');
+            if (savedCost) setCost(parseFloat(savedCost));
 
-            // Optionally load deliveryOption if needed, though it’s set in review
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const savedDelivery = localStorage.getItem('deliveryOption') || 'Standard Delivery';
-            // You could use this if you add delivery options to change-lyrics later
+            console.log('State restoration completed');
         } catch (error) {
             console.error('Error restoring state from localStorage:', error);
             toast.error('Failed to restore previous changes');
         }
-    }, []);
+    }, [isManualEntry]); // Run only on mount
 
     // Text normalization utility
     const normalizeText = (text: string) => {

@@ -7,7 +7,7 @@ const GENIUS_BEARER = process.env.GENIUS_BEARER;
 const allowedOrigins = [
     'http://localhost:3000',
     'https://evjbcx-s0.myshopify.com',
-    'nv-prod.vercel.app'
+    'https://nv-prod.vercel.app'
 ];
 
 export async function GET(req: NextRequest) {
