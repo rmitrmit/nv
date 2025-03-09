@@ -1,3 +1,4 @@
+// src\app\api\genius\lyrics\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 
@@ -5,7 +6,8 @@ const GENIUS_BEARER = process.env.GENIUS_BEARER;
 
 const allowedOrigins = [
     'http://localhost:3000',
-    'https://yourproductiondomain.com'
+    'https://evjbcx-s0.myshopify.com',
+    'nv-prod.vercel.app'
 ];
 
 export async function GET(req: NextRequest) {

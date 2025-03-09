@@ -1,3 +1,4 @@
+// src\app\api\genius\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const GENIUS_BEARER = process.env.GENIUS_BEARER;
@@ -26,7 +27,8 @@ type GeniusResponse = {
 
 const allowedOrigins = [
     'http://localhost:3000',
-    'https://yourproductiondomain.com'
+    'https://evjbcx-s0.myshopify.com',
+    'nv-prod.vercel.app'
 ];
 
 export async function GET(req: NextRequest) {
