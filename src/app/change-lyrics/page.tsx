@@ -11,6 +11,7 @@ import SignInToSaveButton from "@/components/SignInToSaveButton";
 import { Toaster, toast } from 'sonner';
 import { StepIndicator, StepDivider, type StepProps } from '@/components/layouts/StepNavigation';
 import BackButton from '@/components/BackButton';
+import Image from 'next/image';
 
 // src/app/change-lyrics/page.tsx
 // Type definitions
@@ -183,6 +184,7 @@ function ChangeLyricsPageContent() {
     const songId = searchParams.get('id');
     const songTitle = searchParams.get('title');
     const songArtist = searchParams.get('artist');
+    const songImage = searchParams.get('image');
     const songUrl = searchParams.get('url');
     const isManualEntry = searchParams.get('manualEntry') === 'true';
     const router = useRouter();
@@ -191,11 +193,11 @@ function ChangeLyricsPageContent() {
     const [currentStep, setCurrentStep] = useState(2);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [error, setError] = useState('');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [originalLyricsText, setOriginalLyricsText] = useState<string>('');
     const [lyrics, setLyrics] = useState<LyricLine[]>([]);
     const [specialRequests, setSpecialRequests] = useState('');
+    const [replaceTerm, setReplaceTerm] = useState('');
+    const [replaceWith, setReplaceWith] = useState('');
     const [formValues, setFormValues] = useState({
         songUrl: songUrl || '',
         lyrics: '',
@@ -253,11 +255,6 @@ function ChangeLyricsPageContent() {
 
     // Fetch lyrics from API if songId is available
     useEffect(() => {
-        // if (!songId && !isManualEntry) {
-        //     router.push('/');
-        //     return;
-        // }
-
         let isMounted = true; // For cleanup
 
         const fetchLyricsById = async (id: string) => {
@@ -431,7 +428,58 @@ function ChangeLyricsPageContent() {
             return updatedLyrics;
         });
     }
-
+    const handleReplaceAll = () => {
+        if (!replaceTerm.trim()) {
+            toast.error('Please enter a term to replace');
+            return;
+        }
+        setLyrics(prevLyrics => {
+            const updatedLyrics = prevLyrics.map(line => {
+                const newModified = line.modified.replaceAll(replaceTerm, replaceWith);
+                const wordChanges = calculateWordChanges(line.original, newModified);
+                const modifiedWords = newModified.split(' ').filter(word => word.length > 0);
+                const markedWords = [...modifiedWords];
+                const markedPositions = new Set<number>();
+                wordChanges.forEach(change => {
+                    if (change.hasChanged && change.newIndex >= 0 && !markedPositions.has(change.newIndex)) {
+                        if (change.newWord) {
+                            markedWords[change.newIndex] = `<span class="text-red-600">${change.newWord}</span>`;
+                            markedPositions.add(change.newIndex);
+                        }
+                    }
+                });
+                const markedText = markedWords.join(' ');
+                return {
+                    ...line,
+                    modified: newModified,
+                    markedText,
+                    wordChanges
+                };
+            });
+            setFormValues(prev => ({
+                ...prev,
+                lyrics: updatedLyrics.map(line => line.modified).join('\n')
+            }));
+            return updatedLyrics;
+        });
+        toast.success(`Replaced all instances of "${replaceTerm}" with "${replaceWith}"`);
+    };
+    const handleResetLyrics = () => {
+        setLyrics(prevLyrics => {
+            const resetLyrics = prevLyrics.map(line => ({
+                ...line,
+                modified: line.original,
+                markedText: line.original,
+                wordChanges: []
+            }));
+            setFormValues(prev => ({
+                ...prev,
+                lyrics: resetLyrics.map(line => line.modified).join('\n')
+            }));
+            return resetLyrics;
+        });
+        toast.success('Lyrics reset to original version');
+    };
     const validateForm = () => {
         const errors: Record<string, string> = {};
         let isValid = true;
@@ -562,19 +610,32 @@ function ChangeLyricsPageContent() {
                                 Describe Your Lyric Change
                             </h3>
 
-                            {/* Song Title and Artist display */}
-                            {(songTitle || songArtist) && (
-                                <div className="p-3 bg-primary/10 rounded-lg mb-2">
-                                    {songTitle && (
-                                        <h4 className="text-white font-azbuka text-lg">
-                                            {songTitle}
-                                        </h4>
+                            {/* Song Image, Title, and Artist Display */}
+                            {(songImage || songTitle || songArtist) && (
+                                <div className="p-4 bg-primary/10 rounded-lg mb-4 flex flex-col sm:flex-row items-center gap-4">
+                                    {songImage && (
+                                        <div className="relative w-40 h-40 flex-shrink-0">
+                                            <Image
+                                                src={decodeURIComponent(songImage)}
+                                                alt={songTitle || "Song Image"}
+                                                layout="fill"
+                                                objectFit="cover"
+                                                className="rounded-lg"
+                                            />
+                                        </div>
                                     )}
-                                    {songArtist && (
-                                        <p className="text-white/80 font-roboto text-sm mt-1">
-                                            by {songArtist}
-                                        </p>
-                                    )}
+                                    <div className="flex flex-col items-center sm:items-start">
+                                        {songTitle && (
+                                            <h4 className="text-white font-azbuka text-lg">
+                                                {songTitle}
+                                            </h4>
+                                        )}
+                                        {songArtist && (
+                                            <p className="text-white/80 font-roboto text-sm mt-1">
+                                                by {songArtist}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -674,6 +735,44 @@ function ChangeLyricsPageContent() {
                                                     {formErrors.lyrics}
                                                 </Form.Message>
                                             )}
+                                        </div>
+                                    </div>
+                                    {/* Reset Button */}
+                                    <button
+                                        type="button"
+                                        onClick={handleResetLyrics}
+                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-blue-200 text-blue-900 hover:text-blue-200 hover:bg-blue-900 hover:ring-blue-500/50 focus-visible:ring focus-visible:ring-blue-500/50 active:bg-blue-700 active:ring-0 px-5 rounded-t-none rounded-b-md text-sm md:text-base h-10 md:h-12 w-full -mt-4"
+                                    >
+                                        Reset to Original Lyrics
+                                    </button>
+
+                                    {/* Replace Section */}
+                                    <div className="mt-2 flex flex-col gap-2 w-full">
+                                        <label className="flex scroll-m-20 tracking-normal dark:text-white font-semibold text-white text-sm md:text-base">
+                                            Replace Words
+                                        </label>
+                                        <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                            <input
+                                                type="text"
+                                                value={replaceTerm}
+                                                onChange={(e) => setReplaceTerm(e.target.value)}
+                                                placeholder="Word to replace..."
+                                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={replaceWith}
+                                                onChange={(e) => setReplaceWith(e.target.value)}
+                                                placeholder="Replace with..."
+                                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleReplaceAll}
+                                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md text-sm md:text-base h-10 md:h-12 w-full sm:w-auto"
+                                            >
+                                                Replace All
+                                            </button>
                                         </div>
                                     </div>
 

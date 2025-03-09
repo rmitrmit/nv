@@ -1,12 +1,13 @@
-// src\app\api\genius\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
+const GENIUS_BEARER = process.env.GENIUS_BEARER;
 
 type Song = {
     id: string;
     title: string;
     artist: string;
+    image: string;
+    url: string;
 };
 
 type GeniusResponse = {
@@ -16,27 +17,16 @@ type GeniusResponse = {
                 id: number;
                 title: string;
                 artist_names: string;
+                song_art_image_url: string;
+                url: string;
             }
         }>
     }
 };
 
-const mockResults: Song[] = [
-    { id: '12345', title: 'Reptilia', artist: 'The Strokes' },
-    { id: '2', title: 'Reptile', artist: 'Nine Inch Nails' },
-    { id: '3', title: 'No Reptiles', artist: 'Everything Everything' },
-    { id: '4', title: 'Minecraftcito (Despacito 3)', artist: 'ReptileLegitYT' },
-    { id: '5', title: 'Reptile', artist: 'Periphery (Ft. Mikee W Goodman)' },
-    { id: '6', title: 'Minecraft Dreams', artist: 'ReptileLegitYT (Ft. Galaxy Goats)' },
-    { id: '7', title: 'Fairly Bruh Parents', artist: 'reptilelegit (Ft. mol$ archive & wonder)' },
-    { id: '8', title: 'Reptile', artist: 'SIDxRAM' },
-    { id: '9', title: 'Minecraft on My Mind', artist: 'ReptileLegitYT (Ft. Minecraft King27)' },
-    { id: '10', title: 'Nikolai Reptile', artist: 'Shadowax' }
-];
-
 const allowedOrigins = [
-    'http://localhost:3000',  
-    'https://yourproductiondomain.com' 
+    'http://localhost:3000',
+    'https://yourproductiondomain.com'
 ];
 
 export async function GET(req: NextRequest) {
@@ -50,18 +40,18 @@ export async function GET(req: NextRequest) {
         );
     }
 
-    if (!GENIUS_API_KEY) {
-        console.warn("GENIUS_API_KEY is missing, returning mock data");
-        return new NextResponse(JSON.stringify(mockResults), {
-            status: 200,
-            headers: corsHeaders(req),
-        });
+    if (!GENIUS_BEARER) {
+        console.error("GENIUS_BEARER is missing");
+        return new NextResponse(
+            JSON.stringify({ error: 'Genius API token is not configured' }),
+            { status: 500, headers: corsHeaders(req) }
+        );
     }
 
     try {
         const response = await fetch(`https://api.genius.com/search?q=${encodeURIComponent(query)}`, {
             headers: {
-                Authorization: `Bearer ${GENIUS_API_KEY}`,
+                Authorization: `Bearer ${GENIUS_BEARER}`,
             },
         });
 
@@ -79,8 +69,9 @@ export async function GET(req: NextRequest) {
         const songs: Song[] = data.response.hits.map((hit) => ({
             id: hit.result.id.toString(),
             title: hit.result.title,
-            // Use artist_names instead of primary_artist.name
-            artist: hit.result.artist_names
+            artist: hit.result.artist_names,
+            image: hit.result.song_art_image_url,
+            url: hit.result.url
         }));
 
         return new NextResponse(

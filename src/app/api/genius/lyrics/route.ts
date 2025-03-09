@@ -1,65 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as cheerio from 'cheerio';
 
-const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
+const GENIUS_BEARER = process.env.GENIUS_BEARER;
 
 const allowedOrigins = [
-    'http://localhost:3000',  
-    'https://yourproductiondomain.com' 
+    'http://localhost:3000',
+    'https://yourproductiondomain.com'
 ];
-
-// Define a type for mock lyrics
-interface LyricData {
-    id: number;
-    title: string;
-    artist: string;
-    album: string;
-    lyrics: string;
-}
-
-// Mock data for lyrics
-const mockLyrics: Record<string, LyricData> = {
-    "800688": {
-        id: 800688,
-        title: "The Hills",
-        artist: "The Weeknd",
-        album: "Beauty Behind the Madness",
-        lyrics: "[Mock lyrics for The Hills]"
-    },
-    "12345": {
-        id: 12345,
-        title: "Reptilia",
-        artist: "The Strokes",
-        album: "Room on Fire",
-        lyrics: `He seemed impressed by the way you came in
-"Tell us a story, I know you're not boring"
-I was afraid that you would not insist
-"You sound so sleepy, just take this, now leave me"
-I said: "Please don't slow me down if I'm going too fast"
-You're in a strange part of our town
-Yeah, the night's not over
-You're not trying hard enough
-Our lives are changing lanes
-You ran me off the road
-The wait is over
-I'm now taking over
-You're no longer laughing
-I'm not drowning fast enough
-Now every time that I look at myself
-"I thought I told you, this world is not for you"
-The room is on fire as she's fixing her hair
-"You sound so angry, just calm down you found me"
-I said: "Please don't slow me down if I'm going too fast"
-You're in a strange part of our town
-Yeah, the night's not over
-You're not trying hard enough
-Our lives are changing lanes
-You ran me off the road
-The wait is over
-I'm now taking over
-You're no longer laughing
-I'm not drowning fast enough`
-    },
-};
 
 export async function GET(req: NextRequest) {
     const songId = req.nextUrl.searchParams.get('id');
@@ -72,16 +19,8 @@ export async function GET(req: NextRequest) {
         );
     }
 
-    // Check if we have mock data for this song
-    if (mockLyrics[songId]) {
-        return new NextResponse(
-            JSON.stringify(mockLyrics[songId]),
-            { status: 200, headers: corsHeaders(req) }
-        );
-    }
-
-    if (!GENIUS_API_KEY) {
-        console.warn("GENIUS_API_KEY is missing");
+    if (!GENIUS_BEARER) {
+        console.warn("GENIUS_BEARER is missing");
         return new NextResponse(
             JSON.stringify({ error: 'API key not configured' }),
             { status: 500, headers: corsHeaders(req) }
@@ -93,7 +32,7 @@ export async function GET(req: NextRequest) {
         const songResponse = await fetch(
             `https://api.genius.com/songs/${songId}`,
             {
-                headers: { Authorization: `Bearer ${GENIUS_API_KEY}` },
+                headers: { Authorization: `Bearer ${GENIUS_BEARER}` },
             }
         );
 
@@ -107,7 +46,7 @@ export async function GET(req: NextRequest) {
 
         const songData = await songResponse.json();
         const song = songData.response.song;
-        
+
         if (!song) {
             return new NextResponse(
                 JSON.stringify({ error: 'Song not found' }),
@@ -115,34 +54,17 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        // Fetch lyrics from the new API endpoint
-        const lyricsResponse = await fetch(
-            `${process.env.BASE_URL}/api/genius/lyric?track_name=${song.id}`
-        );
-
-        if (!lyricsResponse.ok) {
-            console.error(`Lyrics API request failed: ${lyricsResponse.status}`);
-            return new NextResponse(
-                JSON.stringify({
-                    id: song.id,
-                    title: song.title,
-                    artist: song.primary_artist.name,
-                    album: song.album?.name || "Unknown Album",
-                    lyrics: 'Lyrics not found',
-                }),
-                { status: 200, headers: corsHeaders(req) }
-            );
-        }
-
-        const lyricsData = await lyricsResponse.json();
+        // Fetch lyrics from Genius website (not API)
+        const lyrics = await fetchLyricsFromGenius(song.url);
 
         return new NextResponse(
             JSON.stringify({
                 id: song.id,
                 title: song.title,
                 artist: song.primary_artist.name,
+                image: song.song_art_image_url,
                 album: song.album?.name || "Unknown Album",
-                lyrics: lyricsData.lyrics,
+                lyrics: lyrics,
             }),
             { status: 200, headers: corsHeaders(req) }
         );
@@ -152,6 +74,61 @@ export async function GET(req: NextRequest) {
             JSON.stringify({ error: 'Internal Server Error' }),
             { status: 500, headers: corsHeaders(req) }
         );
+    }
+}
+
+async function fetchLyricsFromGenius(url: string): Promise<string> {
+    try {
+        // Fetch the HTML content of the Genius lyrics page
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            console.error(`Failed to fetch lyrics page: ${response.status}`);
+            return 'Lyrics not found';
+        }
+
+        const html = await response.text();
+        const $ = cheerio.load(html);
+
+        // Find the lyrics container - Genius has changed this structure multiple times
+        // Try different selectors that have been used by Genius
+        let lyricsText = '';
+
+        // Current structure (as of early 2025)
+        const lyricsContainers = $('[data-lyrics-container="true"]');
+        if (lyricsContainers.length > 0) {
+            lyricsContainers.each((_, element) => {
+                const container = $(element);
+                // Clean the HTML: replace <br> with newlines and remove other tags
+                const html = container.html() || '';
+                const text = html
+                    .replace(/<br\s*\/?>/g, '\n') // Replace <br> with newlines
+                    .replace(/<(?:.|\n)*?>/gm, ''); // Remove other HTML tags
+
+                lyricsText += text + '\n\n';
+            });
+        }
+        // Older structure
+        else if ($('.lyrics').length > 0) {
+            lyricsText = $('.lyrics').text().trim();
+        }
+        // Even older structure
+        else if ($('.song_body-lyrics').length > 0) {
+            lyricsText = $('.song_body-lyrics').text().trim();
+        }
+
+        // Clean up the lyrics text
+        lyricsText = lyricsText
+            .trim()
+            .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
+            .replace(/\[/g, '\n[') // Put section headers on new lines
+            .replace(/\n\s+/g, '\n') // Remove leading whitespace on lines
+            .trim();
+
+        return lyricsText || 'Lyrics not found';
+    } catch (error) {
+        console.error('Error fetching lyrics:', error);
+        return 'Error fetching lyrics';
     }
 }
 
@@ -167,5 +144,6 @@ function corsHeaders(req: NextRequest): Record<string, string> {
         'Access-Control-Allow-Origin': allowedOrigin || 'null',
         'Access-Control-Allow-Methods': 'GET',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+
     };
 }
