@@ -452,9 +452,6 @@ function ChangeLyricsPageContent() {
 
     const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        console.log("handleNextStep triggered, currentStep:", currentStep);
-
         const hasChanges = lyrics.some((line) => line.modified !== line.original);
         if (!hasChanges) {
             toast.error('No changes made', {
@@ -472,8 +469,6 @@ function ChangeLyricsPageContent() {
         }
 
         try {
-            console.log("Storing data in localStorage...");
-
             // Store lyric-related data
             localStorage.setItem('lyrics', JSON.stringify(lyrics));
             localStorage.setItem('cost', cost.toString());
@@ -488,7 +483,6 @@ function ChangeLyricsPageContent() {
             if (songArtist) localStorage.setItem('songArtist', songArtist);
             if (songUrl) localStorage.setItem('songUrl', songUrl);
 
-            console.log("Navigating to /review, new currentStep:", currentStep + 1);
             setCurrentStep(currentStep + 1);
             router.push("/review");
 

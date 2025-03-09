@@ -48,7 +48,7 @@ function OrderReviewPageContent() {
         {
             id: "delivery-standard",
             title: "Standard Delivery",
-            description: "5 business days",
+            description: "2-7 business days",
             price: 0,
             isSelected: true,
             type: "delivery",
@@ -56,7 +56,7 @@ function OrderReviewPageContent() {
         {
             id: "delivery-rush",
             title: "Rush Delivery",
-            description: "Rush - 1 business day",
+            description: "1 business day",
             price: 15,
             originalPrice: 20,
             isSelected: false,
@@ -142,11 +142,12 @@ function OrderReviewPageContent() {
                     modified: line.modified,
                 }));
 
-            // Count total words changed
+            // Fixed word changes count calculation
             const wordChangedCount = lyrics
                 .filter(line => line.modified !== line.original)
                 .reduce((total, line) => {
-                    return total + (line.wordChanges?.length || 0);
+                    // Count only words that have actually changed (hasChanged = true)
+                    return total + (line.wordChanges?.filter(change => change.hasChanged)?.length || 0);
                 }, 0);
 
             const orderData = {
@@ -169,8 +170,18 @@ function OrderReviewPageContent() {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
-                    // Redirect to Shopify invoice URL
-                    window.location.href = result.data.invoiceUrl;
+                    // Redirect to Shopify invoice URL using top-level navigation if in iframe
+                    try {
+                        // Check if we can access top (cross-origin issues might prevent this)
+                        if (window.top && window.top !== window) {
+                            window.top.location.href = result.data.invoiceUrl;
+                        } else {
+                            window.parent.location.href = result.data.invoiceUrl;
+                        }
+                    } catch {
+                        // Fallback if security restrictions prevent access to top
+                        window.location.href = result.data.invoiceUrl;
+                    }
                     return;
                 } else {
                     const userMessage = result.userMessage || "Failed to create order";

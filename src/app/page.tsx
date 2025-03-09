@@ -123,8 +123,6 @@ const SearchPanel = () => {
 
     // Function to search the Genius API
     const searchGenius = async (query: string) => {
-        console.log("Searching for:", query);
-
         if (!query || !query.trim()) {
             setSearchResults([]);
             setShowResults(false);

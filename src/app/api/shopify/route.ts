@@ -107,31 +107,7 @@ export async function POST(request: NextRequest) {
 
         // GraphQL mutation to create draft order
         const createDraftOrderQuery = `
-            mutation draftOrderCreate($input: DraftOrderInput!) { 
-                draftOrderCreate(input: $input) { 
-                    draftOrder { 
-                        id 
-                        invoiceUrl 
-                        lineItems(first: 10) { 
-                            edges { 
-                                node { 
-                                    title 
-                                    originalUnitPrice 
-                                    quantity 
-                                    customAttributes { 
-                                        key 
-                                        value 
-                                    } 
-                                } 
-                            } 
-                        } 
-                    } 
-                    userErrors { 
-                        field 
-                        message 
-                    } 
-                }
-            }
+            mutation draftOrderCreate($input: DraftOrderInput!) { draftOrderCreate(input: $input) { draftOrder { id invoiceUrl lineItems(first: 10) { edges { node { title originalUnitPrice quantity } } } } userErrors { field message } } }
         `;
 
         // Create title based on song name if available
@@ -146,16 +122,16 @@ export async function POST(request: NextRequest) {
         const draftOrderInput = {
             lineItems: [
                 {
-                    variantId: `gid://shopify/ProductVariant/${VARIANT_ID}`,
                     quantity: 1,
                     title: itemTitle,
+                    originalUnitPrice: 0,
                     customAttributes: [
                         {
                             key: "Priority",
                             value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)"
                         },
                         {
-                            key: "Words Changed",
+                            key: "Words changed",
                             value: wordChanged.toString()
                         },
                         {
