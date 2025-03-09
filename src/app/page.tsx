@@ -1,8 +1,8 @@
 "use client";
 
-import Image from 'next/image';
-import { useState, useEffect } from 'react';
-import { Search, Clock, X, Link, ChevronRight } from 'lucide-react';
+// import Image from 'next/image';
+import { useState } from 'react';
+import { Search, Clock, Link, ChevronRight } from 'lucide-react';
 import React from "react";
 import { useRouter } from 'next/navigation';
 import * as Tabs from '@radix-ui/react-tabs';
@@ -12,11 +12,11 @@ import SignInToSaveButton from "@/components/SignInToSaveButton";
 import { StepIndicator, StepDivider, StepProps } from '@/components/layouts/StepNavigation';
 
 // Types
-type Song = {
-    id: string;
-    title: string;
-    artist: string;
-}
+// type Song = {
+//     id: string;
+//     title: string;
+//     artist: string;
+// }
 
 type ManualEntryFields = {
     songUrl: string;
@@ -45,224 +45,224 @@ const InfoCard = () => (
     </div>
 );
 
-const EmptyState = () => (
-    <div className="flex flex-col gap-5 md:gap-6 text-center max-w-md mx-auto mt-4">
-        <Image
-            src="/main.webp"
-            alt="Lyric Changer Main Logo"
-            width={250}
-            height={250}
-            className="mx-auto size-20 md:size-24"
-            priority
-        />
-        <div>
-            <h3 className="text-lg md:text-xl text-white font-azbuka tracking-normal">
-                We await your Song Lyrics!
-            </h3>
-            <h5 className="text-sm md:text-base text-white font-roboto tracking-normal">
-                Search for your song above.
-            </h5>
-        </div>
-    </div>
-);
+// const EmptyState = () => (
+//     <div className="flex flex-col gap-5 md:gap-6 text-center max-w-md mx-auto mt-4">
+//         <Image
+//             src="/main.webp"
+//             alt="Lyric Changer Main Logo"
+//             width={250}
+//             height={250}
+//             className="mx-auto size-20 md:size-24"
+//             priority
+//         />
+//         <div>
+//             <h3 className="text-lg md:text-xl text-white font-azbuka tracking-normal">
+//                 We await your Song Lyrics!
+//             </h3>
+//             <h5 className="text-sm md:text-base text-white font-roboto tracking-normal">
+//                 Search for your song above.
+//             </h5>
+//         </div>
+//     </div>
+// );
 
-// Loading indicator component
-const LoadingIndicator = () => (
-    <div className="absolute -right-5 top-1/2 -translate-y-1/2">
-        <div className="loader-variant-equalizer text-primary scale-[0.45] rotate-180">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </div>
-);
+// // Loading indicator component
+// const LoadingIndicator = () => (
+//     <div className="absolute -right-5 top-1/2 -translate-y-1/2">
+//         <div className="loader-variant-equalizer text-primary scale-[0.45] rotate-180">
+//             <span></span>
+//             <span></span>
+//             <span></span>
+//             <span></span>
+//         </div>
+//     </div>
+// );
 
-// Search Results component
-const SearchResults = ({ results, isLoading, onSelect }: {
-    results: Song[],
-    isLoading: boolean,
-    onSelect: (song: Song) => void
-}) => {
-    if (results.length === 0 && !isLoading) {
-        return null;
-    }
+// // Search Results component
+// const SearchResults = ({ results, isLoading, onSelect }: {
+//     results: Song[],
+//     isLoading: boolean,
+//     onSelect: (song: Song) => void
+// }) => {
+//     if (results.length === 0 && !isLoading) {
+//         return null;
+//     }
 
-    return (
-        <div className="relative overflow-hidden flex-1 w-full rounded-md border bg-white max-h-[calc(100vh-20rem)] md:max-h-[calc(100vh-22rem)] overflow-y-auto">
-            <div className="min-w-full">
-                {results.map((song, index) => (
-                    <React.Fragment key={song.id}>
-                        <div className="relative cursor-pointer p-3 md:p-4 hover:bg-gray-200/20 transition-colors border-2 border-spacing-0 -mb-1" onClick={() => onSelect(song)}>
-                            <div className="pr-12">
-                                <h5 className="scroll-m-20 font-azbuka tracking-normal text-sm md:text-base text-primary truncate">
-                                    {song.title}
-                                </h5>
-                                <p className="scroll-m-20 font-roboto font-normal tracking-wide text-xs md:text-sm text-muted truncate">
-                                    {song.artist}
-                                </p>
-                            </div>
-                        </div>
-                        {index < results.length - 1 && (
-                            <div data-orientation="horizontal" role="none" className="shrink-0 bg-gray-200 dark:bg-gray-100/5 h-[1.5px] w-full"></div>
-                        )}
-                    </React.Fragment>
-                ))}
-            </div>
-        </div>
-    );
-};
+//     return (
+//         <div className="relative overflow-hidden flex-1 w-full rounded-md border bg-white max-h-[calc(100vh-20rem)] md:max-h-[calc(100vh-22rem)] overflow-y-auto">
+//             <div className="min-w-full">
+//                 {results.map((song, index) => (
+//                     <React.Fragment key={song.id}>
+//                         <div className="relative cursor-pointer p-3 md:p-4 hover:bg-gray-200/20 transition-colors border-2 border-spacing-0 -mb-1" onClick={() => onSelect(song)}>
+//                             <div className="pr-12">
+//                                 <h5 className="scroll-m-20 font-azbuka tracking-normal text-sm md:text-base text-primary truncate">
+//                                     {song.title}
+//                                 </h5>
+//                                 <p className="scroll-m-20 font-roboto font-normal tracking-wide text-xs md:text-sm text-muted truncate">
+//                                     {song.artist}
+//                                 </p>
+//                             </div>
+//                         </div>
+//                         {index < results.length - 1 && (
+//                             <div data-orientation="horizontal" role="none" className="shrink-0 bg-gray-200 dark:bg-gray-100/5 h-[1.5px] w-full"></div>
+//                         )}
+//                     </React.Fragment>
+//                 ))}
+//             </div>
+//         </div>
+//     );
+// };
 
-const SearchPanel = () => {
-    const router = useRouter();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [searchResults, setSearchResults] = useState<Song[]>([]);
-    const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-    const [showResults, setShowResults] = useState(false);
+// const SearchPanel = () => {
+//     const router = useRouter();
+//     const [searchQuery, setSearchQuery] = useState('');
+//     const [isLoading, setIsLoading] = useState(false);
+//     const [searchResults, setSearchResults] = useState<Song[]>([]);
+//     const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+//     const [showResults, setShowResults] = useState(false);
 
-    // Function to search the Genius API
-    const searchGenius = async (query: string) => {
-        if (!query || !query.trim()) {
-            setSearchResults([]);
-            setShowResults(false);
-            return;
-        }
+//     // Function to search the Genius API
+//     const searchGenius = async (query: string) => {
+//         if (!query || !query.trim()) {
+//             setSearchResults([]);
+//             setShowResults(false);
+//             return;
+//         }
 
-        setIsLoading(true);
-        setShowResults(true);
+//         setIsLoading(true);
+//         setShowResults(true);
 
-        try {
-            const response = await fetch(`/api/genius?q=${encodeURIComponent(query)}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch songs: ${response.status}`);
-            }
+//         try {
+//             const response = await fetch(`/api/genius?q=${encodeURIComponent(query)}`);
+//             if (!response.ok) {
+//                 throw new Error(`Failed to fetch songs: ${response.status}`);
+//             }
 
-            const data = await response.json();
+//             const data = await response.json();
 
-            if (!Array.isArray(data)) {
-                throw new Error('Invalid API response format');
-            }
+//             if (!Array.isArray(data)) {
+//                 throw new Error('Invalid API response format');
+//             }
 
-            setSearchResults(data);
-        } catch (error) {
-            console.error("Error searching Genius API:", error);
-            setSearchResults([]);
-            // Show error toast
-            toast.error('Error searching for songs', {
-                description: 'Please try again later',
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+//             setSearchResults(data);
+//         } catch (error) {
+//             console.error("Error searching Genius API:", error);
+//             setSearchResults([]);
+//             // Show error toast
+//             toast.error('Error searching for songs', {
+//                 description: 'Please try again later',
+//             });
+//         } finally {
+//             setIsLoading(false);
+//         }
+//     };
 
-    // Debounce the search to avoid too many API calls
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            searchGenius(searchQuery);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
+//     // Debounce the search to avoid too many API calls
+//     useEffect(() => {
+//         const timer = setTimeout(() => {
+//             searchGenius(searchQuery);
+//         }, 500);
+//         return () => clearTimeout(timer);
+//     }, [searchQuery]);
 
-    const handleSelectSong = (song: Song) => {
-        setSelectedSong(song);
-        setShowResults(false);
-    };
+//     const handleSelectSong = (song: Song) => {
+//         setSelectedSong(song);
+//         setShowResults(false);
+//     };
 
-    const handleNext = () => {
-        if (!selectedSong) {
-            toast.error('Invalid selection', {
-                description: 'Please select a song first',
-            });
-            return;
-        }
+//     const handleNext = () => {
+//         if (!selectedSong) {
+//             toast.error('Invalid selection', {
+//                 description: 'Please select a song first',
+//             });
+//             return;
+//         }
 
-        // Navigate to the "change-lyrics" page with query parameters
-        router.push(`/change-lyrics?id=${selectedSong.id}&title=${encodeURIComponent(selectedSong.title)}&artist=${encodeURIComponent(selectedSong.artist)}`);
-    };
+//         // Navigate to the "change-lyrics" page with query parameters
+//         router.push(`/change-lyrics?id=${selectedSong.id}&title=${encodeURIComponent(selectedSong.title)}&artist=${encodeURIComponent(selectedSong.artist)}`);
+//     };
 
-    return (
-        <div className="py-6 mt-4 flex flex-1 flex-col gap-4">
-            <p className="text-sm md:text-base text-white font-roboto font-normal tracking-wide">
-                Search for your song below. Once selected, it may take a few seconds to load the lyrics.
-            </p>
+//     return (
+//         <div className="py-6 mt-4 flex flex-1 flex-col gap-4">
+//             <p className="text-sm md:text-base text-white font-roboto font-normal tracking-wide">
+//                 Search for your song below. Once selected, it may take a few seconds to load the lyrics.
+//             </p>
 
-            <Form.Root className="space-y-6">
-                <Form.Field name="search">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 md:size-5 text-gray-400" />
-                        <Form.Control asChild>
-                            <input
-                                className="flex w-full rounded-md border border-component-input
-                                h-10 md:h-12 pl-10 pr-8 text-sm md:text-base text-primary
-                                bg-foundation px-3 py-1 shadow-sm shadow-black/10 transition-colors text-gray-900
-                                dark:bg-foundation-secondary dark:placeholder:text-muted/75
-                                focus-visible:outline-none focus-visible:ring focus-visible:ring-secondary/50"
-                                type="text"
-                                placeholder="Search for a Song..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </Form.Control>
-                        {isLoading && <LoadingIndicator />}
-                        {searchQuery && !isLoading && (
-                            <button
-                                className="absolute right-3 top-1/2 -translate-y-1/2"
-                                onClick={() => {
-                                    setSearchQuery('');
-                                    setShowResults(false);
-                                }}
-                                type="button"
-                            >
-                                <X className="size-4 md:size-5 text-gray-400" />
-                            </button>
-                        )}
-                    </div>
-                </Form.Field>
-            </Form.Root>
+//             <Form.Root className="space-y-6">
+//                 <Form.Field name="search">
+//                     <div className="relative">
+//                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 md:size-5 text-gray-400" />
+//                         <Form.Control asChild>
+//                             <input
+//                                 className="flex w-full rounded-md border border-component-input
+//                                 h-10 md:h-12 pl-10 pr-8 text-sm md:text-base text-primary
+//                                 bg-foundation px-3 py-1 shadow-sm shadow-black/10 transition-colors text-gray-900
+//                                 dark:bg-foundation-secondary dark:placeholder:text-muted/75
+//                                 focus-visible:outline-none focus-visible:ring focus-visible:ring-secondary/50"
+//                                 type="text"
+//                                 placeholder="Search for a Song..."
+//                                 value={searchQuery}
+//                                 onChange={(e) => setSearchQuery(e.target.value)}
+//                             />
+//                         </Form.Control>
+//                         {isLoading && <LoadingIndicator />}
+//                         {searchQuery && !isLoading && (
+//                             <button
+//                                 className="absolute right-3 top-1/2 -translate-y-1/2"
+//                                 onClick={() => {
+//                                     setSearchQuery('');
+//                                     setShowResults(false);
+//                                 }}
+//                                 type="button"
+//                             >
+//                                 <X className="size-4 md:size-5 text-gray-400" />
+//                             </button>
+//                         )}
+//                     </div>
+//                 </Form.Field>
+//             </Form.Root>
 
-            {showResults ? (
-                <SearchResults
-                    results={searchResults}
-                    isLoading={isLoading}
-                    onSelect={handleSelectSong}
-                />
-            ) : selectedSong ? (
-                <div className="flex flex-col gap-3">
-                    <div className="p-4 bg-primary/10 rounded-lg">
-                        <h3 className="text-lg text-white font-azbuka tracking-normal">
-                            {selectedSong.title}
-                        </h3>
-                        <p className="text-sm text-white/80 font-roboto tracking-wide">
-                            {selectedSong.artist}
-                        </p>
-                    </div>
-                </div>
-            ) : (
-                <EmptyState />
-            )}
+//             {showResults ? (
+//                 <SearchResults
+//                     results={searchResults}
+//                     isLoading={isLoading}
+//                     onSelect={handleSelectSong}
+//                 />
+//             ) : selectedSong ? (
+//                 <div className="flex flex-col gap-3">
+//                     <div className="p-4 bg-primary/10 rounded-lg">
+//                         <h3 className="text-lg text-white font-azbuka tracking-normal">
+//                             {selectedSong.title}
+//                         </h3>
+//                         <p className="text-sm text-white/80 font-roboto tracking-wide">
+//                             {selectedSong.artist}
+//                         </p>
+//                     </div>
+//                 </div>
+//             ) : (
+//                 <EmptyState />
+//             )}
 
-            {selectedSong && (
-                <div className="flex flex-row py-4">
-                    <button
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal 
-                            transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none 
-                            disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none 
-                            [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground 
-                            hover:bg-primary/90 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 
-                            active:bg-primary/75 active:ring-0 h-10 px-5 rounded-md ml-auto text-sm md:text-base"
-                        type="button"
-                        onClick={handleNext}
-                    >
-                        Next
-                        <ChevronRight className="-mr-1" />
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
+//             {selectedSong && (
+//                 <div className="flex flex-row py-4">
+//                     <button
+//                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal 
+//                             transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none 
+//                             disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none 
+//                             [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground 
+//                             hover:bg-primary/90 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 
+//                             active:bg-primary/75 active:ring-0 h-10 px-5 rounded-md ml-auto text-sm md:text-base"
+//                         type="button"
+//                         onClick={handleNext}
+//                     >
+//                         Next
+//                         <ChevronRight className="-mr-1" />
+//                     </button>
+//                 </div>
+//             )}
+//         </div>
+//     );
+// };
 
 // Also update the ManualEntryPanel component:
 const ManualEntryPanel = () => {
