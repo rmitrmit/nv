@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 
-// Use Edge Runtime for better performance with web scraping
-export const runtime = 'edge';
+// Remove the edge runtime directive to maintain static generation capability
+// export const runtime = 'edge';
 
 const GENIUS_BEARER = process.env.GENIUS_BEARER;
 // Cache duration in seconds (7 days)
@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
             image: song.song_art_image_url,
             album: song.album?.name || "Unknown Album",
             lyrics: lyrics,
+            _timestamp: new Date().toISOString() // Adding timestamp for debugging
         });
 
         // Store in cache
@@ -152,35 +153,49 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
 
         console.log('Sending request with enhanced headers for better scraping compatibility');
 
-        const response = await fetchWithRetry(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
-                'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-            },
-        }, 3);
+        // Use a proxy service to bypass potential Vercel IP restrictions
+        // For a real implementation, set up a proxy service or use a third-party service
+        let html = '';
+        let response;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Failed to fetch lyrics page: Status ${response.status}, Response: ${errorText.substring(0, 200)}...`);
+        try {
+            // First attempt - direct request with enhanced browser-like headers
+            response = await fetchWithRetry(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache',
+                    'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"',
+                    // Potentially important for scraping
+                    'Referer': 'https://genius.com/',
+                }
+            }, 3);
 
-            // Enhanced error reporting for status codes
-            if (response.status === 403) {
-                console.error("Received 403 Forbidden - Possible IP blocking or rate limiting");
-            } else if (response.status === 503) {
-                console.error("Received 503 Service Unavailable - Site might be using anti-bot protection");
+            if (response.ok) {
+                html = await response.text();
+                console.log(`Direct request successful, received ${html.length} bytes`);
+            } else {
+                throw new Error(`Failed with status: ${response.status}`);
             }
+        } catch (error) {
+            // Cast the unknown error to Error, or create a new Error if it's not
+            const directError = error instanceof Error
+                ? error
+                : new Error(String(error));
 
-            return 'Lyrics not found';
+            console.warn(`Direct request failed: ${directError.message}`);
+
+            // Consider implementing a fallback approach here, like using a proxy service
+            // This is a placeholder - you would need to implement an actual proxy solution
+            console.log('Direct fetching failed, consider implementing a proxy solution');
+
+            // Throw error to be caught by the outer try/catch
+            throw new Error(`Could not fetch lyrics: ${directError.message}`);
         }
-
-        console.log(`Response status: ${response.status}, parsing HTML content`);
-        const html = await response.text();
 
         // Log HTML length to check if we're getting proper content
         console.log(`Received HTML length: ${html.length} characters`);
