@@ -1,14 +1,22 @@
-// src\app\api\genius\lyrics\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 
+// Use Edge Runtime for better performance with web scraping
+export const runtime = 'edge';
+
 const GENIUS_BEARER = process.env.GENIUS_BEARER;
+// Cache duration in seconds (7 days)
+const CACHE_DURATION = 60 * 60 * 24 * 7;
 
 const allowedOrigins = [
     'http://localhost:3000',
     'https://evjbcx-s0.myshopify.com',
     'https://nv-prod.vercel.app'
 ];
+
+// Simple in-memory cache (will reset on deployments)
+// For production, consider using KV storage or another persistent solution
+const lyricsCache: Record<string, { data: string, timestamp: number }> = {};
 
 export async function GET(req: NextRequest) {
     const songId = req.nextUrl.searchParams.get('id');
@@ -36,11 +44,27 @@ export async function GET(req: NextRequest) {
 
     try {
         console.log(`Fetching song data for ID: ${songId}`);
-        const songResponse = await fetch(
+
+        // Check if we already have the song data in cache
+        const cacheKey = `song_${songId}`;
+        const now = Math.floor(Date.now() / 1000);
+
+        // Try to get song from cache first
+        if (lyricsCache[cacheKey] && now - lyricsCache[cacheKey].timestamp < CACHE_DURATION) {
+            console.log(`Cache hit for song ID: ${songId}`);
+            return new NextResponse(
+                lyricsCache[cacheKey].data,
+                { status: 200, headers: corsHeaders(req) }
+            );
+        }
+
+        // Fetch from Genius API with retries
+        const songResponse = await fetchWithRetry(
             `https://api.genius.com/songs/${songId}`,
             {
                 headers: { Authorization: `Bearer ${GENIUS_BEARER}` },
-            }
+            },
+            3
         );
 
         if (!songResponse.ok) {
@@ -70,15 +94,23 @@ export async function GET(req: NextRequest) {
         console.log(`Fetching lyrics from: ${song.url}`);
         const lyrics = await fetchLyricsFromGenius(song.url);
 
+        const responseData = JSON.stringify({
+            id: song.id,
+            title: song.title,
+            artist: song.primary_artist.name,
+            image: song.song_art_image_url,
+            album: song.album?.name || "Unknown Album",
+            lyrics: lyrics,
+        });
+
+        // Store in cache
+        lyricsCache[cacheKey] = {
+            data: responseData,
+            timestamp: now
+        };
+
         return new NextResponse(
-            JSON.stringify({
-                id: song.id,
-                title: song.title,
-                artist: song.primary_artist.name,
-                image: song.song_art_image_url,
-                album: song.album?.name || "Unknown Album",
-                lyrics: lyrics,
-            }),
+            responseData,
             { status: 200, headers: corsHeaders(req) }
         );
     } catch (error) {
@@ -107,28 +139,68 @@ export async function GET(req: NextRequest) {
 
 async function fetchLyricsFromGenius(url: string): Promise<string> {
     try {
-        console.log(`Fetching lyrics page from: ${url}`);
-        const response = await fetch(url, {
+        console.log(`Starting lyrics fetch from: ${url}`);
+
+        // Try to get lyrics from cache
+        const cacheKey = `lyrics_${url}`;
+        const now = Math.floor(Date.now() / 1000);
+
+        if (lyricsCache[cacheKey] && now - lyricsCache[cacheKey].timestamp < CACHE_DURATION) {
+            console.log(`Cache hit for lyrics URL: ${url}`);
+            return lyricsCache[cacheKey].data;
+        }
+
+        console.log('Sending request with enhanced headers for better scraping compatibility');
+
+        const response = await fetchWithRetry(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
             },
-        });
+        }, 3);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`Failed to fetch lyrics page: Status ${response.status}, Response: ${errorText}`);
+            console.error(`Failed to fetch lyrics page: Status ${response.status}, Response: ${errorText.substring(0, 200)}...`);
+
+            // Enhanced error reporting for status codes
+            if (response.status === 403) {
+                console.error("Received 403 Forbidden - Possible IP blocking or rate limiting");
+            } else if (response.status === 503) {
+                console.error("Received 503 Service Unavailable - Site might be using anti-bot protection");
+            }
+
             return 'Lyrics not found';
         }
 
+        console.log(`Response status: ${response.status}, parsing HTML content`);
         const html = await response.text();
+
+        // Log HTML length to check if we're getting proper content
+        console.log(`Received HTML length: ${html.length} characters`);
+
+        if (html.length < 1000) {
+            console.warn("Suspiciously short HTML response, might be getting blocked or receiving a redirect");
+            console.log("HTML preview:", html.substring(0, 200));
+        }
+
         const $ = cheerio.load(html);
 
         let lyricsText = '';
-        const lyricsContainers = $('[data-lyrics-container="true"]');
 
+        // Try different selectors in order of preference
+        console.log("Attempting to extract lyrics with multiple selector strategies");
+
+        // Strategy 1: New Genius layout with data-lyrics-container
+        const lyricsContainers = $('[data-lyrics-container="true"]');
         if (lyricsContainers.length > 0) {
-            console.log(`Found ${lyricsContainers.length} lyrics containers`);
+            console.log(`Found ${lyricsContainers.length} lyrics containers using data-lyrics-container`);
             lyricsContainers.each((_, element) => {
                 const container = $(element);
                 const html = container.html() || '';
@@ -138,16 +210,33 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
                 lyricsText += text + '\n\n';
             });
         }
+        // Strategy 2: Classic .lyrics selector
         else if ($('.lyrics').length > 0) {
-            console.log('Using .lyrics fallback selector');
+            console.log('Using .lyrics selector - found elements');
             lyricsText = $('.lyrics').text().trim();
         }
+        // Strategy 3: Another potential container
         else if ($('.song_body-lyrics').length > 0) {
-            console.log('Using .song_body-lyrics fallback selector');
+            console.log('Using .song_body-lyrics selector - found elements');
             lyricsText = $('.song_body-lyrics').text().trim();
         }
+        // Strategy 4: Try to find any div with lyrics in the class name
+        else if ($('div[class*="Lyrics__Container"]').length > 0) {
+            console.log('Using Lyrics__Container selector - found elements');
+            $('div[class*="Lyrics__Container"]').each((_, elem) => {
+                lyricsText += $(elem).text() + '\n\n';
+            });
+        }
+        // Strategy 5: Last resort - look for common lyrics patterns
         else {
-            console.warn('No lyrics containers found in page');
+            console.warn('No standard lyrics containers found, trying generic content extraction');
+            // Look for content area
+            const contentArea = $('.song_body, .lyrics, article, main, #lyrics-root');
+            if (contentArea.length > 0) {
+                lyricsText = contentArea.text().trim();
+            } else {
+                console.error('Failed to locate lyrics in the page content');
+            }
         }
 
         lyricsText = lyricsText
@@ -157,7 +246,19 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
             .replace(/\n\s+/g, '\n')
             .trim();
 
-        console.log(`Lyrics length: ${lyricsText.length} characters`);
+        console.log(`Extracted lyrics length: ${lyricsText.length} characters`);
+
+        if (lyricsText.length < 10) {
+            console.warn("Lyrics extraction likely failed - text too short");
+            return 'Lyrics extraction failed';
+        }
+
+        // Store in cache
+        lyricsCache[cacheKey] = {
+            data: lyricsText,
+            timestamp: now
+        };
+
         return lyricsText || 'Lyrics not found';
     } catch (error) {
         const errorDetails = error instanceof Error ? {
@@ -174,20 +275,89 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
     }
 }
 
-// CORS Handling
+// Enhanced fetch with retry logic and timeout
+async function fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    retries = 3,
+    timeout = 15000
+): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            console.log(`Fetch attempt ${attempt}/${retries} for ${url}`);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const fetchOptions: RequestInit = {
+                ...options,
+                signal: controller.signal
+            };
+
+            const response = await fetch(url, fetchOptions);
+            clearTimeout(timeoutId);
+
+            // If we get a 429 Too Many Requests, wait longer before retrying
+            if (response.status === 429 && attempt < retries) {
+                const backoffTime = Math.pow(2, attempt) * 1000; // Exponential backoff
+                console.log(`Received 429 rate limit, backing off for ${backoffTime}ms before retry`);
+                await new Promise(resolve => setTimeout(resolve, backoffTime));
+                continue;
+            }
+
+            return response;
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                console.warn(`Fetch timeout after ${timeout}ms for ${url}`);
+            } else {
+                console.error(`Fetch error (attempt ${attempt}/${retries}):`, lastError.message);
+            }
+
+            if (attempt < retries) {
+                const backoffTime = Math.pow(2, attempt) * 500; // Exponential backoff
+                console.log(`Backing off for ${backoffTime}ms before retry`);
+                await new Promise(resolve => setTimeout(resolve, backoffTime));
+            }
+        }
+    }
+
+    throw lastError || new Error(`Failed to fetch after ${retries} attempts`);
+}
+
+// CORS Handling with improved debugging
 function corsHeaders(req: NextRequest): Record<string, string> {
     const origin = req.headers.get('origin');
     const env = process.env.NODE_ENV || 'production';
-    const allowedOrigin = allowedOrigins.includes(origin || '')
-        ? origin
-        : env === 'development' ? '*' : '';
 
-    console.log(`CORS check - Environment: ${env}, Request origin: ${origin}, Allowed origin: ${allowedOrigin}`);
+    let allowedOrigin = 'null';
+
+    // Set allowed origin
+    if (allowedOrigins.includes(origin || '')) {
+        allowedOrigin = origin || 'null';
+        console.log(`CORS: Origin ${origin} is explicitly allowed`);
+    } else if (env === 'development') {
+        allowedOrigin = '*';
+        console.log(`CORS: Development environment - allowing all origins`);
+    } else {
+        console.log(`CORS: Origin ${origin} is not in allowed list for production`);
+    }
+
+    console.log(`CORS headers set - Environment: ${env}, Request origin: ${origin}, Allowed origin: ${allowedOrigin}`);
 
     return {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': allowedOrigin || 'null',
-        'Access-Control-Allow-Methods': 'GET',
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400', // 24 hours
     };
+}
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+    return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
 }
