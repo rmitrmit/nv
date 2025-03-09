@@ -12,6 +12,8 @@ const allowedOrigins = [
 
 export async function GET(req: NextRequest) {
     const songId = req.nextUrl.searchParams.get('id');
+    const origin = req.headers.get('origin') || 'unknown';
+    console.log(`Request received - SongID: ${songId}, Origin: ${origin}`);
 
     if (!songId) {
         console.error("Missing required parameter: id");
@@ -22,15 +24,18 @@ export async function GET(req: NextRequest) {
     }
 
     if (!GENIUS_BEARER) {
-        console.warn("GENIUS_BEARER is missing");
+        console.error("GENIUS_BEARER environment variable is not set");
         return new NextResponse(
-            JSON.stringify({ error: 'API key not configured' }),
+            JSON.stringify({
+                error: 'Server configuration error',
+                details: 'Genius API token is not configured'
+            }),
             { status: 500, headers: corsHeaders(req) }
         );
     }
 
     try {
-        // Fetch song details from Genius
+        console.log(`Fetching song data for ID: ${songId}`);
         const songResponse = await fetch(
             `https://api.genius.com/songs/${songId}`,
             {
@@ -39,10 +44,15 @@ export async function GET(req: NextRequest) {
         );
 
         if (!songResponse.ok) {
-            console.error(`Genius API request failed: ${songResponse.status}`);
+            const errorText = await songResponse.text();
+            console.error(`Genius API request failed: Status ${songResponse.status}, Response: ${errorText}`);
             return new NextResponse(
-                JSON.stringify({ error: 'Failed to fetch song data from Genius API' }),
-                { status: songResponse.status, headers: corsHeaders(req) }
+                JSON.stringify({
+                    error: 'Failed to fetch song data from Genius API',
+                    status: songResponse.status,
+                    details: errorText
+                }),
+                { status: 502, headers: corsHeaders(req) }
             );
         }
 
@@ -50,13 +60,14 @@ export async function GET(req: NextRequest) {
         const song = songData.response.song;
 
         if (!song) {
+            console.warn(`Song not found for ID: ${songId}`);
             return new NextResponse(
                 JSON.stringify({ error: 'Song not found' }),
                 { status: 404, headers: corsHeaders(req) }
             );
         }
 
-        // Fetch lyrics from Genius website (not API)
+        console.log(`Fetching lyrics from: ${song.url}`);
         const lyrics = await fetchLyricsFromGenius(song.url);
 
         return new NextResponse(
@@ -71,9 +82,24 @@ export async function GET(req: NextRequest) {
             { status: 200, headers: corsHeaders(req) }
         );
     } catch (error) {
-        console.error("Unexpected error:", error);
+        const errorDetails = error instanceof Error ? {
+            message: error.message,
+            stack: error.stack
+        } : { message: String(error) };
+
+        console.error("Unexpected error:", {
+            ...errorDetails,
+            songId,
+            origin,
+            timestamp: new Date().toISOString()
+        });
+
         return new NextResponse(
-            JSON.stringify({ error: 'Internal Server Error' }),
+            JSON.stringify({
+                error: 'Internal Server Error',
+                details: errorDetails.message,
+                timestamp: new Date().toISOString()
+            }),
             { status: 500, headers: corsHeaders(req) }
         );
     }
@@ -81,55 +107,64 @@ export async function GET(req: NextRequest) {
 
 async function fetchLyricsFromGenius(url: string): Promise<string> {
     try {
-        // Fetch the HTML content of the Genius lyrics page
+        console.log(`Fetching lyrics page from: ${url}`);
         const response = await fetch(url);
 
         if (!response.ok) {
-            console.error(`Failed to fetch lyrics page: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Failed to fetch lyrics page: Status ${response.status}, Response: ${errorText}`);
             return 'Lyrics not found';
         }
 
         const html = await response.text();
         const $ = cheerio.load(html);
 
-        // Find the lyrics container - Genius has changed this structure multiple times
-        // Try different selectors that have been used by Genius
         let lyricsText = '';
-
-        // Current structure (as of early 2025)
         const lyricsContainers = $('[data-lyrics-container="true"]');
+
         if (lyricsContainers.length > 0) {
+            console.log(`Found ${lyricsContainers.length} lyrics containers`);
             lyricsContainers.each((_, element) => {
                 const container = $(element);
-                // Clean the HTML: replace <br> with newlines and remove other tags
                 const html = container.html() || '';
                 const text = html
-                    .replace(/<br\s*\/?>/g, '\n') // Replace <br> with newlines
-                    .replace(/<(?:.|\n)*?>/gm, ''); // Remove other HTML tags
-
+                    .replace(/<br\s*\/?>/g, '\n')
+                    .replace(/<(?:.|\n)*?>/gm, '');
                 lyricsText += text + '\n\n';
             });
         }
-        // Older structure
         else if ($('.lyrics').length > 0) {
+            console.log('Using .lyrics fallback selector');
             lyricsText = $('.lyrics').text().trim();
         }
-        // Even older structure
         else if ($('.song_body-lyrics').length > 0) {
+            console.log('Using .song_body-lyrics fallback selector');
             lyricsText = $('.song_body-lyrics').text().trim();
         }
+        else {
+            console.warn('No lyrics containers found in page');
+        }
 
-        // Clean up the lyrics text
         lyricsText = lyricsText
             .trim()
-            .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
-            .replace(/\[/g, '\n[') // Put section headers on new lines
-            .replace(/\n\s+/g, '\n') // Remove leading whitespace on lines
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/\[/g, '\n[')
+            .replace(/\n\s+/g, '\n')
             .trim();
 
+        console.log(`Lyrics length: ${lyricsText.length} characters`);
         return lyricsText || 'Lyrics not found';
     } catch (error) {
-        console.error('Error fetching lyrics:', error);
+        const errorDetails = error instanceof Error ? {
+            message: error.message,
+            stack: error.stack
+        } : { message: String(error) };
+
+        console.error('Error fetching lyrics:', {
+            ...errorDetails,
+            url,
+            timestamp: new Date().toISOString()
+        });
         return 'Error fetching lyrics';
     }
 }
@@ -137,15 +172,17 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
 // CORS Handling
 function corsHeaders(req: NextRequest): Record<string, string> {
     const origin = req.headers.get('origin');
+    const env = process.env.NODE_ENV || 'production';
     const allowedOrigin = allowedOrigins.includes(origin || '')
         ? origin
-        : process.env.NODE_ENV === 'development' ? '*' : '';
+        : env === 'development' ? '*' : '';
+
+    console.log(`CORS check - Environment: ${env}, Request origin: ${origin}, Allowed origin: ${allowedOrigin}`);
 
     return {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': allowedOrigin || 'null',
         'Access-Control-Allow-Methods': 'GET',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-
     };
 }
