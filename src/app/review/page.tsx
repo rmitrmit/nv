@@ -159,6 +159,7 @@ function OrderReviewPageContent() {
                 songUrl: songUrl || undefined,
                 deliveryType,
                 lyrics: lyricsChanges,
+                specialRequests: specialRequests
             };
 
             const response = await fetch("/api/shopify", {

@@ -1,21 +1,19 @@
-// src\app\api\shopify\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 // Shopify credentials (server-side only)
 const SHOPIFY_ADMIN_API_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-const VARIANT_ID = process.env.VARIANT_ID; // Get variant ID from env variables
 
-// Interface for the request payload
 interface CartRequest {
     sessionId: string;
-    price: number; // Price in dollars (e.g., 10.00)
-    wordChanged: number
-    songName?: string; // Optional song name
-    artist?: string; // Optional artist name
-    songUrl?: string; // Optional song URL (fallback if name/artist not provided)
-    deliveryType: 'standard' | 'rush'; // Delivery type (standard or rush)
-    lyrics: { original: string; modified: string }[]; // Add lyrics array
+    price: number;
+    wordChanged: number;
+    songName?: string;
+    artist?: string;
+    songUrl?: string;
+    deliveryType: 'standard' | 'rush';
+    lyrics: { original: string; modified: string }[];
+    specialRequests?: string;
 }
 
 type ShopifyError = {
@@ -23,15 +21,11 @@ type ShopifyError = {
     message: string;
 };
 
-// Type definitions for the Shopify response
 interface LineItemNode {
     title: string;
     originalUnitPrice: string;
     quantity: number;
-    customAttributes?: {
-        key: string;
-        value: string;
-    }[];
+    customAttributes?: { key: string; value: string }[];
 }
 
 interface LineItemEdge {
@@ -51,95 +45,123 @@ interface DraftOrderResponse {
             draftOrder: {
                 id: string;
                 invoiceUrl: string;
-                lineItems: {
-                    edges: LineItemEdge[];
-                };
+                lineItems: { edges: LineItemEdge[] };
             };
             userErrors: ShopifyError[];
         };
     };
-    errors?: GraphQLError[]; // Properly typed GraphQL errors
+    errors?: GraphQLError[];
 }
 
-// POST handler to create a Shopify draft order
 export async function POST(request: NextRequest) {
     try {
-        if (!SHOPIFY_ADMIN_API_TOKEN || !SHOPIFY_STORE_DOMAIN || !VARIANT_ID) {
-            console.error('Shopify Admin API credentials or Variant ID are not set.');
+        // Check environment variables
+        if (!SHOPIFY_ADMIN_API_TOKEN || !SHOPIFY_STORE_DOMAIN) {
+            console.error('Missing Shopify configuration:', {
+                hasToken: !!SHOPIFY_ADMIN_API_TOKEN,
+                hasDomain: !!SHOPIFY_STORE_DOMAIN,
+            });
             return NextResponse.json(
                 {
                     success: false,
                     error: 'Missing Shopify API credentials or Variant ID',
-                    userMessage: 'Internal configuration error. Please contact support.',
+                    userMessage: 'Internal configuration error. Please contact support.'
                 },
                 { status: 500 }
             );
         }
 
-        // Parse request body
-        const { sessionId, price, wordChanged, songName, artist, songUrl, deliveryType, lyrics }: CartRequest = await request.json();
-
-        // Validate required fields
-        if (!sessionId || price == null || !deliveryType || !lyrics) {
+        // Parse and validate request body
+        let body: CartRequest;
+        try {
+            body = await request.json();
+        } catch {
             return NextResponse.json(
                 {
                     success: false,
-                    error: 'Missing required parameters',
-                    userMessage: 'Please provide session ID, price, delivery type, and lyrics.',
+                    error: 'Invalid JSON payload',
+                    userMessage: 'Invalid request format'
                 },
                 { status: 400 }
             );
         }
+
+        const { sessionId, price, wordChanged, songName, artist, songUrl, deliveryType, lyrics, specialRequests } = body;
+
+        // Enhanced validation
+        if (!sessionId || typeof price !== 'number' || !Number.isFinite(price) || price < 0 ||
+            typeof wordChanged !== 'number' || !Number.isFinite(wordChanged) || wordChanged < 0 ||
+            !deliveryType || !['standard', 'rush'].includes(deliveryType) ||
+            !Array.isArray(lyrics) || lyrics.length === 0 ||
+            !lyrics.every(line => typeof line.original === 'string' && typeof line.modified === 'string')) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Invalid request parameters',
+                    userMessage: 'Please provide valid order details'
+                },
+                { status: 400 }
+            );
+        }
+
         const formattedLyricsChanges = lyrics
             .filter(line => line.modified !== line.original)
             .map((line, index) => `${index + 1}: "${line.original}" → "${line.modified}"`)
-            .join("\n");
+            .join("\n") || "No lyrics changes specified";
 
-        // Prepare custom attributes for the draft order
         const customAttributes = [
             { key: 'Order Id', value: sessionId },
             { key: 'Delivery Type', value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)" },
             { key: 'Song Name', value: songName || 'Not specified' },
             { key: 'Artist', value: artist || 'Not specified' },
-            { key: 'Song Url', value: songUrl || 'Not specified' }
+            { key: 'Song Url', value: songUrl || 'Not specified' },
+            { key: 'Special Requests', value: specialRequests || 'Not specified' }
         ];
 
-        // GraphQL mutation to create draft order
         const createDraftOrderQuery = `
-            mutation draftOrderCreate($input: DraftOrderInput!) { draftOrderCreate(input: $input) { draftOrder { id invoiceUrl lineItems(first: 10) { edges { node { title originalUnitPrice quantity } } } } userErrors { field message } } }
+            mutation draftOrderCreate($input: DraftOrderInput!) {
+                draftOrderCreate(input: $input) {
+                    draftOrder {
+                        id
+                        invoiceUrl
+                        lineItems(first: 10) {
+                            edges {
+                                node {
+                                    title
+                                    originalUnitPrice
+                                    quantity
+                                    customAttributes {
+                                        key
+                                        value
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
         `;
 
-        // Create title based on song name if available
-        let itemTitle;
-
-        if (songUrl && songUrl !== "") {
-            itemTitle = `Change lyrics for: "${songUrl}"`;
-        } else {
-            itemTitle = `Change lyrics for: "${songName} - ${artist}"`;
-        }
+        const itemTitle = songUrl?.trim()
+            ? `Change lyrics for: "${songUrl}"`
+            : `Change lyrics for: "${songName || 'Unknown'} - ${artist || 'Unknown'}"`;
 
         const draftOrderInput = {
-            lineItems: [
-                {
-                    quantity: 1,
-                    title: itemTitle,
-                    originalUnitPrice: 0,
-                    customAttributes: [
-                        {
-                            key: "Priority",
-                            value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)"
-                        },
-                        {
-                            key: "Words changed",
-                            value: wordChanged.toString()
-                        },
-                        {
-                            key: "Order ID",
-                            value: sessionId
-                        }
-                    ]
-                }
-            ],
+            lineItems: [{
+                quantity: 1,
+                title: itemTitle,
+                originalUnitPrice: "0.00", // Standardized format
+                customAttributes: [
+                    { key: "Priority", value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)" },
+                    { key: "Words changed", value: wordChanged.toString() },
+                    { key: "Order ID", value: sessionId },
+                    { key: "Special Requests", value: specialRequests || "None" }
+                ]
+            }],
             customAttributes,
             note: `Custom lyrics order:\n${formattedLyricsChanges}`,
             tags: ["custom-lyrics", "ai-generated"],
@@ -157,17 +179,18 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
                 query: createDraftOrderQuery,
-                variables: { input: draftOrderInput },
-            }),
+                variables: { input: draftOrderInput }
+            })
         });
 
         if (!response.ok) {
-            console.error(`Shopify API Error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error(`Shopify API Error: ${response.status} ${response.statusText}`, errorText);
             return NextResponse.json(
                 {
                     success: false,
                     error: `Network error (${response.status})`,
-                    userMessage: 'Unable to connect to Shopify. Please try again later.',
+                    userMessage: 'Unable to connect to Shopify. Please try again later.'
                 },
                 { status: response.status }
             );
@@ -175,9 +198,9 @@ export async function POST(request: NextRequest) {
 
         const json = await response.json() as DraftOrderResponse;
 
-        if (json.errors || json.data?.draftOrderCreate?.userErrors?.length) {
+        if (json.errors?.length || json.data?.draftOrderCreate?.userErrors?.length) {
             const errorDetails = (json.errors || json.data.draftOrderCreate.userErrors)
-                .map((e: ShopifyError) => e.message)
+                .map((e: ShopifyError | GraphQLError) => e.message)
                 .join(', ');
             console.error(`Shopify GraphQL Error: ${errorDetails}`);
             return NextResponse.json(
@@ -185,30 +208,41 @@ export async function POST(request: NextRequest) {
                     success: false,
                     error: 'GraphQL error',
                     details: errorDetails,
-                    userMessage: 'Failed to create your order. Please try again.',
+                    userMessage: 'Failed to create your order. Please try again.'
                 },
                 { status: 400 }
             );
         }
 
         const draftOrder = json.data.draftOrderCreate.draftOrder;
+        if (!draftOrder?.id || !draftOrder?.invoiceUrl) {
+            console.error('Incomplete draft order response:', draftOrder);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Invalid Shopify response',
+                    userMessage: 'Order created but response incomplete'
+                },
+                { status: 500 }
+            );
+        }
 
-        // Return draft order details including invoice URL
         return NextResponse.json({
             success: true,
             data: {
                 orderId: draftOrder.id,
-                invoiceUrl: draftOrder.invoiceUrl,  // This is the invoice URL
-                lineItems: draftOrder.lineItems.edges.map((edge: LineItemEdge) => edge.node)
-            },
+                invoiceUrl: draftOrder.invoiceUrl,
+                lineItems: draftOrder.lineItems.edges.map(edge => edge.node)
+            }
         });
+
     } catch (error) {
-        console.error('Error in draft order creation:', error);
+        console.error('Error in draft order creation:', error instanceof Error ? error.stack : error);
         return NextResponse.json(
             {
                 success: false,
                 error: 'Internal server error',
-                userMessage: 'Something went wrong. Please try again later.',
+                userMessage: 'Something went wrong. Please try again later.'
             },
             { status: 500 }
         );
