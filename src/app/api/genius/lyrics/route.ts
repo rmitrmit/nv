@@ -77,17 +77,17 @@ export async function GET(req: NextRequest) {
 
 async function fetchLyricsFromGenius(url: string): Promise<string> {
     try {
-        const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour if using ISR
+        const response = await fetch(url);
         if (!response.ok) {
             console.error(`Failed to fetch lyrics page: ${response.status}`);
             return 'Lyrics not found';
         }
 
         const html = await response.text();
-        console.error(html);
+        console.log(html);
         const $ = cheerio.load(html);
         let lyricsText = '';
-        console.error($);
+        console.log($);
 
         const lyricsContainers = $('[data-lyrics-container="true"]');
         if (lyricsContainers.length > 0) {
