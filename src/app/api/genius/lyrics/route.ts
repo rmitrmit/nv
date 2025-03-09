@@ -84,10 +84,10 @@ async function fetchLyricsFromGenius(url: string): Promise<string> {
         }
 
         const html = await response.text();
-        console.log(html);
+        console.error(html);
         const $ = cheerio.load(html);
         let lyricsText = '';
-        console.log($);
+        console.error($);
 
         const lyricsContainers = $('[data-lyrics-container="true"]');
         if (lyricsContainers.length > 0) {
