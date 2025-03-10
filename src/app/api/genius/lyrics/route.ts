@@ -93,7 +93,3 @@ function corsHeaders(req: NextRequest): Record<string, string> {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 }
-
-export const config = {
-    runtime: 'edge', // Changed to edge runtime for better performance
-};
