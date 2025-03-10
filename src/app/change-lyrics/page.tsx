@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronRight, ListMusic, ArrowRight } from 'lucide-react';
+import { ChevronRight, ListMusic, ArrowRight, Eraser } from 'lucide-react';
 import React from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Form from '@radix-ui/react-form';
@@ -15,13 +15,14 @@ import Image from 'next/image';
 
 // src/app/change-lyrics/page.tsx
 // Type definitions
-type WordChange = {
+interface WordChange {
     originalWord: string;
     newWord: string;
     originalIndex: number;
     newIndex: number;
     hasChanged: boolean;
-};
+    isTransformation?: boolean; // Added optional property
+}
 
 type LyricLine = {
     id: number;
@@ -33,22 +34,23 @@ type LyricLine = {
 
 // Utility functions
 function calculateWordChanges(original: string, modified: string): WordChange[] {
-    const stripNonAlphanumeric = (text: string) => text.replace(/[^a-zA-Z0-9\s]/g, '');
-
+    // Normalize texts but preserve punctuation and special characters
+    // Only normalize whitespace and line breaks
     const normalizeText = (text: string) => {
-        return stripNonAlphanumeric(text)
-            .replace(/[\n\r]+/g, '')
+        return text.replace(/[\n\r]+/g, ' ')
             .trim()
             .replace(/\s+/g, ' ');
     };
 
-    const normalizedOriginal = normalizeText(original);
-    const normalizedModified = normalizeText(modified);
+    const normalizedOriginal = normalizeText(original || '');
+    const normalizedModified = normalizeText(modified || '');
 
+    // If texts are identical, return empty array
     if (normalizedOriginal === normalizedModified) {
         return [];
     }
 
+    // Split into words (preserve punctuation by keeping it with words)
     const originalWords = normalizedOriginal.split(' ').filter(word => word.length > 0);
     const modifiedWords = normalizedModified.split(' ').filter(word => word.length > 0);
 
@@ -56,73 +58,100 @@ function calculateWordChanges(original: string, modified: string): WordChange[] 
         return [];
     }
 
+    // Compute diff using Myers algorithm approach with a simplified implementation
+    const changes: WordChange[] = [];
+
+    // We'll use dynamic programming to find the longest common subsequence (LCS)
+    // This will help us identify unchanged words
     const lcs = findLongestCommonSubsequence(originalWords, modifiedWords);
 
-    const wordChanges: WordChange[] = [];
-    let origIndex = 0;
-    let modIndex = 0;
-    let lcsIndex = 0;
+    // Use the LCS to identify changes
+    let origPos = 0;
+    let modPos = 0;
+    let lcsPos = 0;
 
-    while (origIndex < originalWords.length || modIndex < modifiedWords.length) {
-        const originalWord = originalWords[origIndex] || '';
-        const newWord = modifiedWords[modIndex] || '';
+    while (origPos < originalWords.length || modPos < modifiedWords.length) {
+        // Case 1: Word is unchanged (part of LCS)
+        if (lcsPos < lcs.length &&
+            origPos < originalWords.length &&
+            modPos < modifiedWords.length &&
+            originalWords[origPos] === lcs[lcsPos] &&
+            modifiedWords[modPos] === lcs[lcsPos]) {
 
-        if (lcsIndex < lcs.length && originalWord === lcs[lcsIndex] && newWord === lcs[lcsIndex]) {
-            // Unchanged word
-            wordChanges.push({
-                originalWord,
-                newWord,
-                originalIndex: origIndex,
-                newIndex: modIndex,
+            changes.push({
+                originalWord: originalWords[origPos],
+                newWord: modifiedWords[modPos],
+                originalIndex: origPos,
+                newIndex: modPos,
                 hasChanged: false
             });
-            origIndex++;
-            modIndex++;
-            lcsIndex++;
-        } else if (originalWord && newWord && originalWord !== newWord &&
-            (origIndex === originalWords.length - 1 || modIndex === modifiedWords.length - 1 ||
-                (origIndex + 1 < originalWords.length && modIndex + 1 < modifiedWords.length &&
-                    originalWords[origIndex + 1] === modifiedWords[modIndex + 1]))) {
-            // Replacement: words differ, and either at the end or next words match
-            wordChanges.push({
-                originalWord,
-                newWord,
-                originalIndex: origIndex,
-                newIndex: modIndex,
+
+            origPos++;
+            modPos++;
+            lcsPos++;
+            continue;
+        }
+
+        // Case 2: Words in both texts, but don't match - likely a replacement
+        if (origPos < originalWords.length && modPos < modifiedWords.length) {
+            // Check if next words match to confirm this is a simple replacement
+            const isSimpleReplacement =
+                (origPos + 1 < originalWords.length &&
+                    modPos + 1 < modifiedWords.length &&
+                    originalWords[origPos + 1] === modifiedWords[modPos + 1]) ||
+                // Or if we're at the end of both sequences
+                (origPos === originalWords.length - 1 && modPos === modifiedWords.length - 1);
+
+            if (isSimpleReplacement) {
+                changes.push({
+                    originalWord: originalWords[origPos],
+                    newWord: modifiedWords[modPos],
+                    originalIndex: origPos,
+                    newIndex: modPos,
+                    hasChanged: true
+                });
+
+                origPos++;
+                modPos++;
+                continue;
+            }
+        }
+
+        // Case 3: Word was deleted from original
+        if (origPos < originalWords.length &&
+            (modPos >= modifiedWords.length ||
+                !modifiedWords.includes(originalWords[origPos]) ||
+                lcsPos < lcs.length && originalWords[origPos] !== lcs[lcsPos])) {
+
+            changes.push({
+                originalWord: originalWords[origPos],
+                newWord: '',
+                originalIndex: origPos,
+                newIndex: modPos > 0 ? modPos - 1 : 0,
                 hasChanged: true
             });
-            origIndex++;
-            modIndex++;
-        } else if (!originalWord || (modIndex < modifiedWords.length && (lcsIndex >= lcs.length || newWord !== lcs[lcsIndex]))) {
-            // Addition
-            if (newWord.trim().length > 0) {
-                wordChanges.push({
-                    originalWord: '',
-                    newWord,
-                    originalIndex: -1,
-                    newIndex: modIndex,
-                    hasChanged: true
-                });
-            }
-            modIndex++;
-        } else if (!newWord || (origIndex < originalWords.length && (lcsIndex >= lcs.length || originalWord !== lcs[lcsIndex]))) {
-            // Deletion
-            if (originalWord.trim().length > 0) {
-                wordChanges.push({
-                    originalWord,
-                    newWord: '',
-                    originalIndex: origIndex,
-                    newIndex: -1,
-                    hasChanged: true
-                });
-            }
-            origIndex++;
+
+            origPos++;
+            continue;
+        }
+
+        // Case 4: Word was added in modified
+        if (modPos < modifiedWords.length) {
+            changes.push({
+                originalWord: '',
+                newWord: modifiedWords[modPos],
+                originalIndex: origPos > 0 ? origPos - 1 : 0,
+                newIndex: modPos,
+                hasChanged: true
+            });
+
+            modPos++;
+            continue;
         }
     }
 
-    return wordChanges;
+    return changes;
 }
-
 
 function findLongestCommonSubsequence(arr1: string[], arr2: string[]): string[] {
     const dp: number[][] = Array(arr1.length + 1)
@@ -261,10 +290,10 @@ function ChangeLyricsPageContent() {
     useEffect(() => {
         let isMounted = true;
 
-        const fetchLyricsById = async (id: string) => {
+        const fetchLyricsByTitleAndArtist = async (songTitle: string, songArtist: string) => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`/api/genius/lyrics?id=${id}`);
+                const response = await fetch(`/api/genius/lyrics?track_name=${encodeURIComponent(songTitle)}&artist_name=${encodeURIComponent(songArtist)}`);
                 if (!response.ok) {
                     throw new Error(`API error: ${response.status}`);
                 }
@@ -293,15 +322,18 @@ function ChangeLyricsPageContent() {
             }
         };
 
-        if (isManualEntry) return; // Skip API fetch for manual entry
+        // Skip API fetch for manual entry or if title/artist are missing
+        if (isManualEntry || !songTitle || !songArtist) return;
+
+        // Now we check both conditions - songId and required data
         if (songId) {
-            fetchLyricsById(songId);
+            fetchLyricsByTitleAndArtist(songTitle, songArtist);
         }
 
         return () => {
             isMounted = false;
         };
-    }, [songId, isManualEntry, router]);
+    }, [songTitle, songArtist, songId, isManualEntry]); // Added songId to dependency array
 
     // State Restoration for Non-Manual Entry
     useEffect(() => {
@@ -334,87 +366,128 @@ function ChangeLyricsPageContent() {
     }, [isManualEntry]); // Run only on mount
 
     // Text normalization utility
-    const normalizeText = (text: string) => {
-        return text
-            .replace(/[\n\r]+/g, '')
-            .trim()
-            .replace(/\s+/g, ' ');
-    };
+    // const normalizeText = (text: string) => {
+    //     return text
+    //         .replace(/[\n\r]+/g, ' ')
+    //         .trim()
+    //         .replace(/\s+/g, ' ');
+    // };
 
     // Strip HTML and ⌧ symbols
     const stripHtmlAndSymbols = (text: string) => {
-        const div = document.createElement('div');
-        div.innerHTML = text;
-        const plainText = div.textContent || div.innerText || '';
+        // Create a temporary div to parse HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text;
+        // Get plain text content
+        const plainText = tempDiv.textContent || tempDiv.innerText || '';
+        // Remove ⌧ symbols and trailing newlines
         return plainText.replace(/⌧/g, '').replace(/[\n\r]+$/g, '');
     };
+
 
     function handleLyricChange(id: number, newText: string) {
         setLyrics(prevLyrics => {
             const updatedLyrics = prevLyrics.map(line => {
                 if (line.id !== id) return line;
 
+                // Clean up the input text
                 const sanitizedNewText = stripHtmlAndSymbols(newText);
-                const normalizedOriginal = normalizeText(line.original);
-                const normalizedText = normalizeText(sanitizedNewText || '');
-                const normalizedModified = normalizeText(line.modified);
 
-                // If no meaningful change since last modified, preserve state
-                if (normalizedText === normalizedModified) {
+                // If there's no content after sanitizing, return the line unchanged
+                if (!sanitizedNewText.trim()) {
                     return line;
                 }
 
-                const wordChanges = calculateWordChanges(normalizedOriginal, normalizedText);
+                // We'll always compare against the original text, not previously modified
+                const wordChanges = calculateWordChanges(line.original, sanitizedNewText);
 
-                const modifiedWords = normalizedText.split(' ').filter(word => word.length > 0);
-                const markedWords = [...modifiedWords];
-                const markedPositions = new Set<number>();
+                // Prepare to mark up the text with changes
+                // We'll rebuild the entire marked text directly
+                let markedText = '';
 
-                // Handle additions and replacements
+                // Split the modified text
+                const modifiedWords = sanitizedNewText.split(' ').filter(word => word.length > 0);
+
+                // Create a separate array to mark up including deletions
+                const result: Array<{ text: string, isDeleted: boolean, isChanged: boolean }> = [];
+
+                // First add all modified words
+                modifiedWords.forEach((word) => {
+                    result.push({
+                        text: word,
+                        isDeleted: false,
+                        isChanged: false
+                    });
+                });
+
+                // Process additions and changes - mark words that were changed
                 wordChanges.forEach(change => {
-                    if (change.hasChanged && change.newIndex >= 0 && !markedPositions.has(change.newIndex)) {
-                        if (change.newWord) {
-                            markedWords[change.newIndex] = `<span class="text-red-600">${change.newWord}</span>`;
-                            markedPositions.add(change.newIndex);
-                        }
+                    if (change.hasChanged && change.newWord && change.newIndex >= 0 && change.newIndex < result.length) {
+                        result[change.newIndex].isChanged = true;
                     }
                 });
 
-                // Handle deletions
-                const deletions = wordChanges.filter(
-                    change => change.hasChanged && change.newWord === '' && change.originalWord !== ''
+                // Process deletions - add deletion markers at appropriate positions
+                const deletions = wordChanges.filter(change =>
+                    change.hasChanged && !change.newWord && change.originalWord
                 );
-                const deletionPositions = new Map<number, number>();
+
+                // Group deletions by the position they occur after
+                const deletionGroups = new Map<number, string[]>();
 
                 deletions.forEach(deletion => {
-                    let insertPos = 0;
-                    for (const change of wordChanges) {
-                        if (change.originalIndex < (deletion.originalIndex ?? 0) && change.newIndex >= 0) {
-                            insertPos = Math.max(insertPos, change.newIndex + 1);
-                        }
+                    // Find the best position in the result array to insert this deletion
+                    let position = deletion.newIndex;
+
+                    // Make sure it's a valid position
+                    position = Math.max(0, Math.min(position, result.length));
+
+                    // Add to the deletion group
+                    if (!deletionGroups.has(position)) {
+                        deletionGroups.set(position, []);
                     }
-                    deletionPositions.set(
-                        insertPos,
-                        (deletionPositions.get(insertPos) || 0) + 1
-                    );
+                    deletionGroups.get(position)?.push(deletion.originalWord);
                 });
 
-                Array.from(deletionPositions.entries())
-                    .sort((a, b) => b[0] - a[0])
-                    .forEach(([position, count]) => {
-                        const deleteSymbol = `<span class="text-red-600">⌧${count > 1 ? ` (${count})` : ''}</span>`;
-                        if (position <= markedWords.length) {
-                            markedWords.splice(position, 0, deleteSymbol);
-                        } else {
-                            markedWords.push(deleteSymbol);
+                // Insert the deletion markers
+                Array.from(deletionGroups.entries())
+                    .sort((a, b) => b[0] - a[0]) // Process in reverse order
+                    .forEach(([position, deletedWords]) => {
+                        // Create a unique set of deleted words
+                        const uniqueDeletedWords = Array.from(new Set(deletedWords));
+                        const count = uniqueDeletedWords.length;
+
+                        // Create the deletion marker
+                        let tooltip = '';
+                        if (count > 1) {
+                            tooltip = ` title="${uniqueDeletedWords.join(', ')}"`;
                         }
+
+                        // Create and insert deletion marker
+                        result.splice(position, 0, {
+                            text: `<span class="text-red-600"${tooltip}>⌧${count > 1 ? ` (${count})` : ''}</span>`,
+                            isDeleted: true,
+                            isChanged: false
+                        });
                     });
 
-                const markedText = markedWords.join(' ');
+                // Build the final marked text
+                markedText = result.map(item => {
+                    if (item.isDeleted) {
+                        // Already contains markup
+                        return item.text;
+                    } else if (item.isChanged) {
+                        // Mark changed word in red
+                        return `<span class="text-red-600">${item.text}</span>`;
+                    } else {
+                        // Unchanged word
+                        return item.text;
+                    }
+                }).join(' ');
 
                 return {
                     ...line,
-                    modified: normalizedText, // Store plain text without ⌧
+                    modified: sanitizedNewText,
                     markedText,
                     wordChanges
                 };
@@ -429,6 +502,7 @@ function ChangeLyricsPageContent() {
             return updatedLyrics;
         });
     }
+
     const handleReplaceAll = () => {
         if (!replaceTerm.trim()) {
             toast.error('Please enter a term to replace');
@@ -530,6 +604,7 @@ function ChangeLyricsPageContent() {
             if (songId) localStorage.setItem('songId', songId);
             if (songTitle) localStorage.setItem('songTitle', songTitle);
             if (songArtist) localStorage.setItem('songArtist', songArtist);
+            if (songImage) localStorage.setItem('songImage', songImage);
             if (songUrl) localStorage.setItem('songUrl', songUrl);
 
             setCurrentStep(currentStep + 1);
@@ -615,13 +690,21 @@ function ChangeLyricsPageContent() {
                             {(songImage || songTitle || songArtist) && (
                                 <div className="p-4 bg-primary/10 rounded-lg mb-4 flex flex-col sm:flex-row items-center gap-4">
                                     {songImage && (
-                                        <div className="relative w-40 h-40 flex-shrink-0">
+                                        <div className="relative w-40 h-40 flex-shrink-0" id="song-image-container">
                                             <Image
                                                 src={decodeURIComponent(songImage)}
                                                 alt={songTitle || "Song Image"}
                                                 layout="fill"
                                                 objectFit="cover"
                                                 className="rounded-lg"
+                                                onError={(e) => {
+                                                    // When error occurs, find and remove the parent container
+                                                    const container = document.getElementById('song-image-container');
+                                                    if (container) {
+                                                        container.style.display = 'none';
+                                                    }
+                                                    console.error(`Failed to load image: '${songImage}'. Error: '${e}'.`);
+                                                }}
                                             />
                                         </div>
                                     )}
@@ -744,7 +827,7 @@ function ChangeLyricsPageContent() {
                                         onClick={handleResetLyrics}
                                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-blue-200 text-blue-900 hover:text-blue-200 hover:bg-blue-900 hover:ring-blue-500/50 focus-visible:ring focus-visible:ring-blue-500/50 active:bg-blue-700 active:ring-0 px-5 rounded-t-none rounded-b-md text-sm md:text-base h-10 md:h-12 w-full -mt-4"
                                     >
-                                        Reset to Original Lyrics
+                                        <Eraser className='w-4 h-4 opacity-85' /> Reset to Original Lyrics
                                     </button>
 
                                     {/* Replace Section */}

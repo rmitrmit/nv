@@ -1,132 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
-
-const GENIUS_BEARER = process.env.GENIUS_BEARER;
 
 const allowedOrigins = [
     'http://localhost:3000',
     'https://evjbcx-s0.myshopify.com',
-    'https://nv-prod.vercel.app',
-    'https://your-app.vercel.app', // Add your Vercel deployment URL
+    'https://nv-prod.vercel.app'
 ];
 
-export async function GET(req: NextRequest) {
-    const songId = req.nextUrl.searchParams.get('id');
+// Fix: Properly define the interface with correct syntax
+interface LyricsResponse {
+    id: number;
+    artistName: string;
+    trackName: string;
+    albumName: string;
+    duration: number;
+    instrumental: boolean;
+    plainLyrics: string;
+    syncedLyrics: string;
+}
 
-    if (!songId) {
-        console.error('Missing required parameter: id');
+export async function GET(req: NextRequest) {
+    const trackName = req.nextUrl.searchParams.get('track_name');
+    const artistName = req.nextUrl.searchParams.get('artist_name');
+
+    // Parameter validation
+    if (!trackName || !artistName) {
+        console.error('Missing required parameter: track_name or artist_name');
         return new NextResponse(
-            JSON.stringify({ error: 'The "id" parameter is required' }),
+            JSON.stringify({ error: 'The "track_name" and "artist_name" parameters are required' }),
             { status: 400, headers: corsHeaders(req) }
         );
     }
 
-    if (!GENIUS_BEARER) {
-        console.warn('GENIUS_BEARER is missing');
-        return new NextResponse(
-            JSON.stringify({ error: 'API key not configured on server' }),
-            { status: 500, headers: corsHeaders(req) }
-        );
-    }
-
     try {
-        const songResponse = await fetch(`https://api.genius.com/songs/${songId}`, {
-            headers: {
-                Authorization: `Bearer ${GENIUS_BEARER}`,
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                Referer: 'https://www.google.com/',
-            },
-        });
+        // Encode parameters to handle special characters
+        const encodedTrack = encodeURIComponent(trackName);
+        const encodedArtist = encodeURIComponent(artistName);
 
-        if (!songResponse.ok) {
-            console.error(`Genius API request failed: ${songResponse.status}`);
+        const response = await fetch(
+            `https://lyricchanger.vercel.app/service/genius/lyric?track_name=${encodedTrack}&artist_name=${encodedArtist}`,
+            {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://www.google.com/',
+                },
+            }
+        );
+
+        if (!response.ok) {
+            console.error(`Failed to fetch lyrics: ${response.status} ${response.statusText}`);
             return new NextResponse(
-                JSON.stringify({ error: `Genius API error: ${songResponse.statusText}` }),
-                { status: songResponse.status, headers: corsHeaders(req) }
+                JSON.stringify({ error: 'Failed to fetch lyrics', status: response.status }),
+                { status: response.status, headers: corsHeaders(req) }
             );
         }
 
-        const songData = await songResponse.json();
-        const song = songData.response.song;
+        // Parse the JSON response
+        const data = await response.json() as LyricsResponse;
 
-        if (!song) {
-            return new NextResponse(
-                JSON.stringify({ error: 'Song not found' }),
-                { status: 404, headers: corsHeaders(req) }
-            );
-        }
-
-        const lyrics = await fetchLyricsFromGenius(song.url);
-
+        // Return formatted response
         return new NextResponse(
             JSON.stringify({
-                id: song.id,
-                title: song.title,
-                artist: song.primary_artist.name,
-                image: song.song_art_image_url,
-                album: song.album?.name || 'Unknown Album',
-                lyrics,
+                id: data.id,
+                title: data.trackName,
+                artist: data.artistName,
+                album: data.albumName || 'Unknown Album',
+                lyrics: data.plainLyrics, // Fixed: was using "plainlyrics" which doesn't match the interface
             }),
             { status: 200, headers: corsHeaders(req) }
         );
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Unexpected error:', error);
+        console.error('Unexpected error:', errorMessage);
         return new NextResponse(
             JSON.stringify({ error: 'Internal Server Error', details: errorMessage }),
             { status: 500, headers: corsHeaders(req) }
         );
-    }
-}
-
-async function fetchLyricsFromGenius(url: string): Promise<string> {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                Authorization: `Bearer ${GENIUS_BEARER}`,
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                Referer: 'https://www.google.com/',
-            },
-        });
-
-        if (!response.ok) {
-            console.error(`Failed to fetch lyrics page: ${response.status}`);
-            return 'Lyrics not found';
-        }
-
-        const html = await response.text();
-        const $ = cheerio.load(html);
-        let lyricsText = '';
-
-        const lyricsContainers = $('[data-lyrics-container="true"]');
-        if (lyricsContainers.length > 0) {
-            lyricsContainers.each((_, element) => {
-                const container = $(element);
-                const html = container.html() || '';
-                const text = html
-                    .replace(/<br\s*\/?>/g, '\n')
-                    .replace(/<(?:.|\n)*?>/gm, '');
-                lyricsText += text + '\n\n';
-            });
-        } else if ($('.lyrics').length > 0) {
-            lyricsText = $('.lyrics').text().trim();
-        } else if ($('.song_body-lyrics').length > 0) {
-            lyricsText = $('.song_body-lyrics').text().trim();
-        }
-
-        lyricsText = lyricsText
-            .trim()
-            .replace(/\n{3,}/g, '\n\n')
-            .replace(/\[/g, '\n[')
-            .replace(/\n\s+/g, '\n')
-            .trim();
-
-        return lyricsText || 'Lyrics not found';
-    } catch (error) {
-        console.error('Error fetching lyrics:', error);
-        return 'Error fetching lyrics';
     }
 }
 
@@ -147,5 +95,5 @@ function corsHeaders(req: NextRequest): Record<string, string> {
 }
 
 export const config = {
-    runtime: 'nodejs', // Ensure Node.js runtime (default for Next.js API routes)
+    runtime: 'edge', // Changed to edge runtime for better performance
 };

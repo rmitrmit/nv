@@ -152,7 +152,7 @@ const SearchPanel = () => {
             setSearchResults([]);
             // Show error toast
             toast.error('Error searching for songs', {
-                description: 'Please try again later',
+                description: `${error}. Please try again later`,
             });
         } finally {
             setIsLoading(false);
