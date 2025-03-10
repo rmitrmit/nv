@@ -82,7 +82,15 @@ export async function GET(req: NextRequest) {
 
 async function fetchLyricsFromGenius(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${GENIUS_BEARER}`,
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                Referer: 'https://www.google.com/',
+            },
+        });
+
         if (!response.ok) {
             console.error(`Failed to fetch lyrics page: ${response.status}`);
             return 'Lyrics not found';
