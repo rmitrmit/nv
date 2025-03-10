@@ -34,8 +34,6 @@ type LyricLine = {
 
 // Utility functions
 function calculateWordChanges(original: string, modified: string): WordChange[] {
-    // Normalize texts but preserve punctuation and special characters
-    // Only normalize whitespace and line breaks
     const normalizeText = (text: string) => {
         return text.replace(/[\n\r]+/g, ' ')
             .trim()
@@ -51,8 +49,8 @@ function calculateWordChanges(original: string, modified: string): WordChange[] 
     }
 
     // Split into words (preserve punctuation by keeping it with words)
-    const originalWords = normalizedOriginal.split(' ').filter(word => word.length > 0);
-    const modifiedWords = normalizedModified.split(' ').filter(word => word.length > 0);
+    const originalWords = normalizedOriginal.split(/\s+/).filter(word => word.length > 0);
+    const modifiedWords = normalizedModified.split(/\s+/).filter(word => word.length > 0);
 
     if (originalWords.length === 0 && modifiedWords.length === 0) {
         return [];
@@ -127,7 +125,7 @@ function calculateWordChanges(original: string, modified: string): WordChange[] 
                 originalWord: originalWords[origPos],
                 newWord: '',
                 originalIndex: origPos,
-                newIndex: modPos > 0 ? modPos - 1 : 0,
+                newIndex: modPos,
                 hasChanged: true
             });
 
@@ -238,13 +236,25 @@ function ChangeLyricsPageContent() {
     const ADDITIONAL_COST_PER_CHANGE = 5;
 
     // Calculate total word changes
-    const totalWordChanges = useMemo(() =>
-        lyrics.reduce(
-            (sum, line) => sum + line.wordChanges.filter(w => w.hasChanged).length,
-            0
-        ),
-        [lyrics]
-    );
+    function countActualWords(text: string): number {
+        // This counts actual words, not punctuation
+        const words = text.trim().split(/\s+/).filter(word => {
+            // Filter out strings that are only punctuation
+            return word.length > 0 && !/^[.,()[\]{}:;!?-]+$/.test(word);
+        });
+        return words.length;
+    }
+
+    // Then modify your existing useMemo calculation:
+    // Calculate total word changes
+    const totalWordChanges = useMemo(() => {
+        return lyrics.reduce((sum, line) => {
+            // Count only actual words that changed, not punctuation
+            const originalWordCount = countActualWords(line.original);
+            const modifiedWordCount = countActualWords(line.modified);
+            return sum + Math.abs(originalWordCount - modifiedWordCount);
+        }, 0);
+    }, [lyrics]);
 
     // Calculate cost
     const [cost, setCost] = useState(BASE_COST);
@@ -365,14 +375,6 @@ function ChangeLyricsPageContent() {
         }
     }, [isManualEntry]); // Run only on mount
 
-    // Text normalization utility
-    // const normalizeText = (text: string) => {
-    //     return text
-    //         .replace(/[\n\r]+/g, ' ')
-    //         .trim()
-    //         .replace(/\s+/g, ' ');
-    // };
-
     // Strip HTML and ⌧ symbols
     const stripHtmlAndSymbols = (text: string) => {
         // Create a temporary div to parse HTML
@@ -383,7 +385,6 @@ function ChangeLyricsPageContent() {
         // Remove ⌧ symbols and trailing newlines
         return plainText.replace(/⌧/g, '').replace(/[\n\r]+$/g, '');
     };
-
 
     function handleLyricChange(id: number, newText: string) {
         setLyrics(prevLyrics => {
@@ -398,96 +399,81 @@ function ChangeLyricsPageContent() {
                     return line;
                 }
 
-                // We'll always compare against the original text, not previously modified
-                const wordChanges = calculateWordChanges(line.original, sanitizedNewText);
+                // Normalize the text to remove extra whitespace
+                const normalizedNewText = sanitizedNewText.replace(/\s{2,}/g, ' ').trim();
 
-                // Prepare to mark up the text with changes
-                // We'll rebuild the entire marked text directly
-                let markedText = '';
+                // We'll always compare against the original text, not previously modified
+                const wordChanges = calculateWordChanges(line.original, normalizedNewText);
 
                 // Split the modified text
-                const modifiedWords = sanitizedNewText.split(' ').filter(word => word.length > 0);
+                const modifiedWords = normalizedNewText.split(/\s+/).filter(word => word.length > 0);
 
-                // Create a separate array to mark up including deletions
-                const result: Array<{ text: string, isDeleted: boolean, isChanged: boolean }> = [];
+                // Create a result array with all the words including original and new
+                const result: Array<{ text: string, type: 'unchanged' | 'changed' | 'changedPunctuation' | 'deleted' }> = [];
 
-                // First add all modified words
-                modifiedWords.forEach((word) => {
-                    result.push({
-                        text: word,
-                        isDeleted: false,
-                        isChanged: false
-                    });
-                });
+                // First add all modified words with their status
+                modifiedWords.forEach((word, index) => {
+                    // Find if this word was changed
+                    const change = wordChanges.find(c =>
+                        c.newIndex === index && c.newWord === word && c.hasChanged);
 
-                // Process additions and changes - mark words that were changed
-                wordChanges.forEach(change => {
-                    if (change.hasChanged && change.newWord && change.newIndex >= 0 && change.newIndex < result.length) {
-                        result[change.newIndex].isChanged = true;
+                    if (change) {
+                        // Check if this is only a punctuation change
+                        const originalWithoutPunctuation = change.originalWord.replace(/[.,()[\]{}:;!?-]+/g, '');
+                        const newWithoutPunctuation = word.replace(/[.,()[\]{}:;!?-]+/g, '');
+
+                        const isPunctuationChangeOnly =
+                            originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
+                            originalWithoutPunctuation.length > 0;
+
+                        result.push({
+                            text: word,
+                            type: isPunctuationChangeOnly ? 'changedPunctuation' : 'changed'
+                        });
+                    } else {
+                        result.push({
+                            text: word,
+                            type: 'unchanged'
+                        });
                     }
                 });
 
-                // Process deletions - add deletion markers at appropriate positions
+                // Process deletions - add each deleted word individually
                 const deletions = wordChanges.filter(change =>
                     change.hasChanged && !change.newWord && change.originalWord
                 );
 
-                // Group deletions by the position they occur after
-                const deletionGroups = new Map<number, string[]>();
+                // Sort deletions by their position in the new text
+                deletions.sort((a, b) => a.newIndex - b.newIndex);
 
+                // Insert deletion markers one by one
                 deletions.forEach(deletion => {
-                    // Find the best position in the result array to insert this deletion
+                    // Make sure index is valid
                     let position = deletion.newIndex;
-
-                    // Make sure it's a valid position
                     position = Math.max(0, Math.min(position, result.length));
 
-                    // Add to the deletion group
-                    if (!deletionGroups.has(position)) {
-                        deletionGroups.set(position, []);
-                    }
-                    deletionGroups.get(position)?.push(deletion.originalWord);
+                    result.splice(position, 0, {
+                        text: '⌧',
+                        type: 'deleted'
+                    });
                 });
 
-                // Insert the deletion markers
-                Array.from(deletionGroups.entries())
-                    .sort((a, b) => b[0] - a[0]) // Process in reverse order
-                    .forEach(([position, deletedWords]) => {
-                        // Create a unique set of deleted words
-                        const uniqueDeletedWords = Array.from(new Set(deletedWords));
-                        const count = uniqueDeletedWords.length;
-
-                        // Create the deletion marker
-                        let tooltip = '';
-                        if (count > 1) {
-                            tooltip = ` title="${uniqueDeletedWords.join(', ')}"`;
-                        }
-
-                        // Create and insert deletion marker
-                        result.splice(position, 0, {
-                            text: `<span class="text-red-600"${tooltip}>⌧${count > 1 ? ` (${count})` : ''}</span>`,
-                            isDeleted: true,
-                            isChanged: false
-                        });
-                    });
-
                 // Build the final marked text
-                markedText = result.map(item => {
-                    if (item.isDeleted) {
-                        // Already contains markup
-                        return item.text;
-                    } else if (item.isChanged) {
-                        // Mark changed word in red
+                const markedText = result.map(item => {
+                    if (item.type === 'deleted') {
+                        return `<span class="text-red-600">⌧</span>`;
+                    } else if (item.type === 'changed') {
                         return `<span class="text-red-600">${item.text}</span>`;
+                    } else if (item.type === 'changedPunctuation') {
+                        return `<span class="underline">${item.text}</span>`;
                     } else {
-                        // Unchanged word
                         return item.text;
                     }
                 }).join(' ');
 
                 return {
                     ...line,
-                    modified: sanitizedNewText,
+                    modified: normalizedNewText, // Store the normalized text
                     markedText,
                     wordChanges
                 };
@@ -759,11 +745,11 @@ function ChangeLyricsPageContent() {
                                                 <ListMusic className="-mt-0.5 mr-1 size-4 md:size-5 md:mt-0.5" />
                                                 <span>
                                                     <strong>Pricing Summary</strong> <br />
-                                                    <span>Base Fee (First Change): <strong>${BASE_COST}</strong></span> <br />
+                                                    <span>First-word Change: <strong>${BASE_COST}</strong></span> <br />
                                                     <span>Additional Changes: <strong>{Math.max(0, totalWordChanges - 1)} × ${ADDITIONAL_COST_PER_CHANGE} = ${Math.max(0, totalWordChanges - 1) * ADDITIONAL_COST_PER_CHANGE}</strong></span> <br />
                                                     <div className="text-base md:text-lg border-t border-white/20 mt-2 pt-2">
                                                         <span>
-                                                            <strong>Total: ${cost}</strong>
+                                                            <strong>Total: ${cost}</strong> <span>({totalWordChanges} word{totalWordChanges !== 1 ? 's' : ''})</span>
                                                         </span>
                                                     </div>
                                                 </span>
