@@ -221,6 +221,7 @@ function ChangeLyricsPageContent() {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [originalLyricsText, setOriginalLyricsText] = useState<string>('');
+    const [isError, setIsError] = useState<boolean>(false);
     const [lyrics, setLyrics] = useState<LyricLine[]>([]);
     const [specialRequests, setSpecialRequests] = useState('');
     const [replaceTerm, setReplaceTerm] = useState('');
@@ -263,6 +264,7 @@ function ChangeLyricsPageContent() {
     useEffect(() => {
         const additionalChanges = Math.max(0, totalWordChanges - 1); // First change is free
         setCost(BASE_COST + additionalChanges * ADDITIONAL_COST_PER_CHANGE);
+        setIsError(false);
     }, [totalWordChanges]);
 
     // Manual Entry and Initial State Setup
@@ -305,6 +307,8 @@ function ChangeLyricsPageContent() {
                 setIsLoading(true);
                 const response = await fetch(`/api/genius/lyrics?track_name=${encodeURIComponent(songTitle)}&artist_name=${encodeURIComponent(songArtist)}`);
                 if (!response.ok) {
+                    toast.error('We had problem fetching the lyrics. Please go "back" and select "manual entry" tab.');
+                    setIsError(true);
                     throw new Error(`API error: ${response.status}`);
                 }
                 const data = await response.json();
@@ -712,13 +716,15 @@ function ChangeLyricsPageContent() {
                             {/* Navigation Buttons */}
                             <div className="flex flex-row items-center gap-2 py-0">
                                 <BackButton href="/" />
-                                <button
-                                    onClick={handleNextStep}
-                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
-                                    type="button"
-                                >
-                                    Change the Lyrics ${cost} <ChevronRight className="-mr-1 size-4 md:size-5" />
-                                </button>
+                                {!isError && (
+                                    < button
+                                        onClick={handleNextStep}
+                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+                                        type="button"
+                                    >
+                                        Change the Lyrics ${cost} <ChevronRight className="-mr-1 size-4 md:size-5" />
+                                    </button>
+                                )}
                             </div>
 
                             <Separator.Root
@@ -885,7 +891,7 @@ function ChangeLyricsPageContent() {
                     </Tabs.Root>
                 </section>
             </div>
-        </main>
+        </main >
     );
 }
 
