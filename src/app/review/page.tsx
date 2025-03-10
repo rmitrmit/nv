@@ -138,6 +138,7 @@ function OrderReviewPageContent() {
             const lyricsChanges = lyrics
                 .filter(line => line.modified !== line.original)
                 .map(line => ({
+                    id: line.id,
                     original: line.original,
                     modified: line.modified,
                 }));

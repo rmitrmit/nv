@@ -12,7 +12,7 @@ interface CartRequest {
     artist?: string;
     songUrl?: string;
     deliveryType: 'standard' | 'rush';
-    lyrics: { original: string; modified: string }[];
+    lyrics: { id: number, original: string; modified: string }[];
     specialRequests?: string;
 }
 
@@ -106,12 +106,12 @@ export async function POST(request: NextRequest) {
 
         const formattedLyricsChanges = lyrics
             .filter(line => line.modified !== line.original)
-            .map((line, index) => `${index + 1}: "${line.original}" → "${line.modified}"`)
+            .map((line) => `${line.id}: "${line.original}" → "${line.modified}"`)
             .join("\n") || "No lyrics changes specified";
 
         const customAttributes = [
             { key: 'Order Id', value: sessionId },
-            { key: 'Delivery Type', value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)" },
+            { key: 'Delivery Type', value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Standard Delivery (2-7 days)" },
             { key: 'Song Name', value: songName || 'Not specified' },
             { key: 'Artist', value: artist || 'Not specified' },
             { key: 'Song Url', value: songUrl || 'Not specified' },
@@ -163,8 +163,8 @@ export async function POST(request: NextRequest) {
                 ]
             }],
             customAttributes,
-            note: `Custom lyrics order:\n${formattedLyricsChanges}`,
-            tags: ["custom-lyrics", "ai-generated"],
+            note: `Lyrics change:\n${formattedLyricsChanges}`,
+            tags: [`${deliveryType}-delivery`, "custom-lyrics"],
             shippingLine: {
                 title: "Digital Delivery",
                 price: price.toFixed(2)
