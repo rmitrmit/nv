@@ -33,6 +33,9 @@ type LyricLine = {
 };
 
 // Utility functions
+function escapeRegExp(string: string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 function calculateWordChanges(original: string, modified: string): WordChange[] {
     const normalizeText = (text: string) => {
         return text.replace(/[\n\r]+/g, ' ')
@@ -237,23 +240,41 @@ function ChangeLyricsPageContent() {
     const ADDITIONAL_COST_PER_CHANGE = 5;
 
     // Calculate total word changes
-    function countActualWords(text: string): number {
-        // This counts actual words, not punctuation
-        const words = text.trim().split(/\s+/).filter(word => {
-            // Filter out strings that are only punctuation
-            return word.length > 0 && !/^[.,()[\]{}:;!?-]+$/.test(word);
+    function countChangedWords(line: LyricLine): number {
+        // Count only actual changes - additions, deletions, and substitutions
+        let changedWordCount = 0;
+
+        // Track which positions we've already counted to avoid double counting
+        const countedPositions = new Set<number>();
+
+        // Process each change in the line
+        line.wordChanges.forEach(change => {
+            // Skip if we've already counted this position or if it's not a change
+            if (!change.hasChanged || countedPositions.has(change.originalIndex)) {
+                return;
+            }
+
+            // Skip if it's just a punctuation change
+            const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+            const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+
+            const isPunctuationChangeOnly =
+                originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
+                originalWithoutPunctuation.length > 0;
+
+            if (!isPunctuationChangeOnly) {
+                changedWordCount++;
+                countedPositions.add(change.originalIndex);
+            }
         });
-        return words.length;
+
+        return changedWordCount;
     }
 
-    // Then modify your existing useMemo calculation:
-    // Calculate total word changes
+    // Updated totalWordChanges calculation
     const totalWordChanges = useMemo(() => {
         return lyrics.reduce((sum, line) => {
-            // Count only actual words that changed, not punctuation
-            const originalWordCount = countActualWords(line.original);
-            const modifiedWordCount = countActualWords(line.modified);
-            return sum + Math.abs(originalWordCount - modifiedWordCount);
+            return sum + countChangedWords(line);
         }, 0);
     }, [lyrics]);
 
@@ -379,15 +400,17 @@ function ChangeLyricsPageContent() {
         }
     }, [isManualEntry]); // Run only on mount
 
-    // Strip HTML and ⌧ symbols
+    // Improved stripHtmlAndSymbols function
     const stripHtmlAndSymbols = (text: string) => {
         // Create a temporary div to parse HTML
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = text;
+
         // Get plain text content
         const plainText = tempDiv.textContent || tempDiv.innerText || '';
-        // Remove ⌧ symbols and trailing newlines
-        return plainText.replace(/⌧/g, '').replace(/[\n\r]+$/g, '');
+
+        // Remove ⌧ symbols completely and trim excess spaces
+        return plainText.replace(/⌧/g, ' ').replace(/\s{2,}/g, ' ').trim();
     };
 
     function handleLyricChange(id: number, newText: string) {
@@ -406,7 +429,7 @@ function ChangeLyricsPageContent() {
                 // Normalize the text to remove extra whitespace
                 const normalizedNewText = sanitizedNewText.replace(/\s{2,}/g, ' ').trim();
 
-                // We'll always compare against the original text, not previously modified
+                // Calculate word changes by comparing to original
                 const wordChanges = calculateWordChanges(line.original, normalizedNewText);
 
                 // Split the modified text
@@ -417,13 +440,13 @@ function ChangeLyricsPageContent() {
 
                 // First add all modified words with their status
                 modifiedWords.forEach((word, index) => {
-                    // Find if this word was changed
+                    // Find if this word exists in the changes
                     const change = wordChanges.find(c =>
-                        c.newIndex === index && c.newWord === word && c.hasChanged);
+                        c.newIndex === index && c.newWord === word);
 
-                    if (change) {
+                    if (change && change.hasChanged) {
                         // Check if this is only a punctuation change
-                        const originalWithoutPunctuation = change.originalWord.replace(/[.,()[\]{}:;!?-]+/g, '');
+                        const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
                         const newWithoutPunctuation = word.replace(/[.,()[\]{}:;!?-]+/g, '');
 
                         const isPunctuationChangeOnly =
@@ -442,27 +465,37 @@ function ChangeLyricsPageContent() {
                     }
                 });
 
-                // Process deletions - add each deleted word individually
+                // Handle deletions - add a deletion marker for EACH deleted word
                 const deletions = wordChanges.filter(change =>
                     change.hasChanged && !change.newWord && change.originalWord
                 );
 
-                // Sort deletions by their position in the new text
+                // Sort deletions by their original position
                 deletions.sort((a, b) => a.newIndex - b.newIndex);
 
-                // Insert deletion markers one by one
-                deletions.forEach(deletion => {
-                    // Make sure index is valid
-                    let position = deletion.newIndex;
-                    position = Math.max(0, Math.min(position, result.length));
+                // Group deletions by their position to handle multiple consecutive deletes
+                const positionMap = new Map<number, number>();
 
-                    result.splice(position, 0, {
-                        text: '⌧',
-                        type: 'deleted'
-                    });
+                deletions.forEach(deletion => {
+                    const position = deletion.newIndex;
+                    positionMap.set(position, (positionMap.get(position) || 0) + 1);
                 });
 
-                // Build the final marked text
+                // Insert deletion markers for each position
+                Array.from(positionMap.entries()).sort((a, b) => a[0] - b[0]).forEach(([position, count]) => {
+                    // Make sure position is valid
+                    const insertPosition = Math.max(0, Math.min(position, result.length));
+
+                    // Add a deletion marker for each deleted word at this position
+                    for (let i = 0; i < count; i++) {
+                        result.splice(insertPosition, 0, {
+                            text: '⌧',
+                            type: 'deleted'
+                        });
+                    }
+                });
+
+                // Build the marked text with proper HTML
                 const markedText = result.map(item => {
                     if (item.type === 'deleted') {
                         return `<span class="text-red-600">⌧</span>`;
@@ -477,7 +510,7 @@ function ChangeLyricsPageContent() {
 
                 return {
                     ...line,
-                    modified: normalizedNewText, // Store the normalized text
+                    modified: normalizedNewText,
                     markedText,
                     wordChanges
                 };
@@ -493,27 +526,32 @@ function ChangeLyricsPageContent() {
         });
     }
 
+    // Similarly fix the handleReplaceAll function to match the updated logic
     const handleReplaceAll = () => {
         if (!replaceTerm.trim()) {
             toast.error('Please enter a term to replace');
             return;
         }
+
         setLyrics(prevLyrics => {
             const updatedLyrics = prevLyrics.map(line => {
+                // Skip if line doesn't contain the search term
+                if (!line.modified.includes(replaceTerm)) {
+                    return line;
+                }
+
+                // Create new modified text with replacements
                 const newModified = line.modified.replaceAll(replaceTerm, replaceWith);
+
+                // Calculate word changes against original text
                 const wordChanges = calculateWordChanges(line.original, newModified);
-                const modifiedWords = newModified.split(' ').filter(word => word.length > 0);
-                const markedWords = [...modifiedWords];
-                const markedPositions = new Set<number>();
-                wordChanges.forEach(change => {
-                    if (change.hasChanged && change.newIndex >= 0 && !markedPositions.has(change.newIndex)) {
-                        if (change.newWord) {
-                            markedWords[change.newIndex] = `<span class="text-red-600">${change.newWord}</span>`;
-                            markedPositions.add(change.newIndex);
-                        }
-                    }
-                });
-                const markedText = markedWords.join(' ');
+
+                // Create HTML marked text directly with replacements highlighted
+                const markedText = newModified.replace(
+                    new RegExp(escapeRegExp(replaceWith), 'g'),
+                    `<span class="text-red-600">${replaceWith}</span>`
+                );
+
                 return {
                     ...line,
                     modified: newModified,
@@ -521,14 +559,19 @@ function ChangeLyricsPageContent() {
                     wordChanges
                 };
             });
+
+            // Update form values
             setFormValues(prev => ({
                 ...prev,
                 lyrics: updatedLyrics.map(line => line.modified).join('\n')
             }));
+
             return updatedLyrics;
         });
+
         toast.success(`Replaced all instances of "${replaceTerm}" with "${replaceWith}"`);
     };
+
     const handleResetLyrics = () => {
         setLyrics(prevLyrics => {
             const resetLyrics = prevLyrics.map(line => ({
