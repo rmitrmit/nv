@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
         if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
         _customAttributes.push({
             key: "* Lyrics Change",
-            value: `\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`
+            value: `\n(Word changes: ${wordChanged} word${wordChanged !== 1 ? 's' : ''})\n${formattedLyricsChanges}`
         });
         if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
         _customAttributes.push({
