@@ -173,7 +173,11 @@ export async function POST(request: NextRequest) {
             if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
             if (wordChanged) _customAttributes.push({ key: "* Words Changed", value: wordChanged.toString() });
             if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: specialRequests });
-            if (songImage) _customAttributes.push({ key: "* Song Image", value: songImage });
+            _customAttributes.push({
+                key: "* Order Status",
+                value: deliveryType === 'rush' ? "We will update you via your email (1 day)" : "We will update you via your email (2-7 days)"
+            });
+            if (songImage) _customAttributes.push({ key: "image_url", value: songImage });
 
             const draftOrderInput = {
                 lineItems: [{
