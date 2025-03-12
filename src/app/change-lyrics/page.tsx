@@ -336,7 +336,6 @@ function ChangeLyricsPageContent() {
 
         try {
             const storedLyrics = localStorage.getItem('manualEntryLyrics');
-            console.log('Retrieved manualEntryLyrics:', storedLyrics);
             if (storedLyrics) {
                 setOriginalLyricsText(storedLyrics);
                 setLyrics(generateLyricsData(storedLyrics));
@@ -373,10 +372,6 @@ function ChangeLyricsPageContent() {
                 if (!response.ok) {
                     toast.error('We had problem fetching the lyrics. Please go "back" and select "manual entry" tab.');
                     setIsError(true);
-                    setFormErrors(prevErrors => ({
-                        ...prevErrors,
-                        lyrics: 'We had problem fetching the lyrics. Please go "back" and select "manual entry" tab.'
-                    }));
                     throw new Error(`API error: ${response.status}`);
                 }
                 const data = await response.json();
