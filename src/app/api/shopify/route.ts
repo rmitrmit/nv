@@ -88,6 +88,11 @@ export async function POST(request: NextRequest) {
         }
 
         const { sessionId, price, wordChanged, songName, artist, songImage, songUrl, deliveryType, lyrics, specialRequests } = body;
+        const countWords = (text: string): number => {
+            return text ? text.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
+        };
+        const MAX_WORDS = 100;
+        const specialRequestsWordCount = specialRequests ? countWords(specialRequests) : 0;
 
         // Enhanced validation
         if (!sessionId || typeof price !== 'number' || !Number.isFinite(price) || price < 0 ||
@@ -100,6 +105,15 @@ export async function POST(request: NextRequest) {
                     success: false,
                     error: 'Invalid request parameters',
                     userMessage: 'Please provide valid order details'
+                },
+                { status: 400 }
+            );
+        } else if (specialRequests && specialRequestsWordCount > MAX_WORDS) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Special Request is too long',
+                    userMessage: `Your 'Special Request' is too long. Please go back to "Change Lyrics" and limit it to ${MAX_WORDS} words (currently ${specialRequestsWordCount} words).`
                 },
                 { status: 400 }
             );

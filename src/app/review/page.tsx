@@ -131,6 +131,21 @@ function OrderReviewPageContent() {
             return;
         }
 
+        // Add special requests validation
+        const MAX_WORDS = 100;
+        const countWords = (text: string): number => {
+            return text ? text.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
+        };
+        const specialRequestsWordCount = specialRequests ? countWords(specialRequests) : 0;
+
+        if (specialRequests && specialRequestsWordCount > MAX_WORDS) {
+            toast.error("Special Request is too long", {
+                description: `Please limit your 'Special Request' to ${MAX_WORDS} words (currently ${specialRequestsWordCount} words).`,
+            });
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const sessionId = localStorage.getItem("sessionId") || Math.random().toString(36).substring(2, 15);
             localStorage.setItem("sessionId", sessionId);

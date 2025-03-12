@@ -601,10 +601,21 @@ function ChangeLyricsPageContent() {
             isValid = false;
         }
 
-        setFormErrors(errors);
-        return isValid;
-    };
+        // Validate special requests word count
+        const MAX_WORDS = 100;
+        const countWords = (text: string): number => {
+            return text ? text.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
+        };
+        const specialRequestsWordCount = specialRequests ? countWords(specialRequests) : 0;
 
+        if (specialRequests && specialRequestsWordCount > MAX_WORDS) {
+            errors.specialRequests = `Your request is too long. Please limit it to ${MAX_WORDS} words (currently ${specialRequestsWordCount} words).`;
+            isValid = false;
+        }
+
+        setFormErrors(errors);
+        return { isValid, errors }; // Return both the validity and the errors object
+    };
 
     const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -616,8 +627,20 @@ function ChangeLyricsPageContent() {
             return;
         }
 
-        if (!validateForm()) {
-            const firstError = Object.values(formErrors)[0];
+        // Run validation and get the fresh errors object
+        const { isValid, errors } = validateForm();
+
+        // Show toast for special requests error if that's the issue
+        if (!isValid) {
+            if (errors.specialRequests) {
+                toast.error('Special request too long', {
+                    description: errors.specialRequests,
+                });
+                return;
+            }
+
+            // Show toast for other validation errors
+            const firstError = Object.values(errors)[0];
             toast.error('Invalid input', {
                 description: firstError || 'Please fix the errors in the form',
             });
@@ -650,7 +673,6 @@ function ChangeLyricsPageContent() {
             });
         }
     };
-
 
 
     // Define step data
@@ -909,6 +931,11 @@ function ChangeLyricsPageContent() {
                                                 placeholder="Add any special requests here (e.g. special details & pronunciations, etc.) ..."
                                             />
                                         </Form.Control>
+                                        {formErrors.specialRequests && (
+                                            <Form.Message className="text-sm text-red-500 mt-1">
+                                                {formErrors.specialRequests}
+                                            </Form.Message>
+                                        )}
                                     </Form.Field>
                                 </Form.Root>
                             )}
