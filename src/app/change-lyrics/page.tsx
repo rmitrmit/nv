@@ -925,7 +925,7 @@ function ChangeLyricsPageContent() {
                                         <Form.Control asChild>
                                             <textarea
                                                 className="flex min-h-[80px] w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
-                                                rows={4}
+                                                rows={6}
                                                 value={specialRequests}
                                                 onChange={(e) => setSpecialRequests(e.target.value)}
                                                 placeholder="Add any special requests here (e.g. special details & pronunciations, etc.) ..."
