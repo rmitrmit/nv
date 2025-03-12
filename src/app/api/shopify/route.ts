@@ -131,7 +131,6 @@ export async function POST(request: NextRequest) {
             { key: 'Artist', value: artist || 'Not specified' },
             { key: 'Song Url', value: songUrl || 'Not specified' },
             { key: 'Special Requests', value: specialRequests || 'Not specified' },
-            { key: 'Song Url', value: songUrl || 'Not specified' },
             { key: 'Song Image', value: songImage || 'Not specified' },
         ];
 
@@ -163,24 +162,28 @@ export async function POST(request: NextRequest) {
             }
         `;
 
-        const itemTitle = songUrl?.trim()
-            ? `Change lyrics for: "${songUrl}"`
-            : `Change lyrics for: "${songName || 'Unknown'} - ${artist || 'Unknown'}"`;
+            const _customAttributes = [];
+            if (sessionId) _customAttributes.push({ key: "* Order ID", value: sessionId });
+            _customAttributes.push({
+                key: "* Priority",
+                value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)"
+            });
+            if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
+            if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
+            if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
+            if (wordChanged) _customAttributes.push({ key: "* Words Changed", value: wordChanged.toString() });
+            if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: specialRequests });
+            if (songImage) _customAttributes.push({ key: "* Song Image", value: songImage });
 
         const draftOrderInput = {
             lineItems: [{
                 quantity: 1,
-                title: itemTitle,
+                title: "Change Song Lyrics Service | Nicevois.com",
                 originalUnitPrice: String(price.toFixed(2)), // Standardized format
-                customAttributes: [
-                    { key: "Priority", value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)" },
-                    { key: "Words changed", value: wordChanged.toString() },
-                    { key: "Order ID", value: sessionId },
-                    { key: "Special Requests", value: specialRequests || "None" }
-                ]
+                _customAttributes
             }],
             customAttributes,
-            note: `Lyrics change:\n${formattedLyricsChanges}`,
+            note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
             tags: [`${deliveryType}-delivery`, "custom-lyrics"],
             shippingLine: {
                 title: "Digital Delivery",
