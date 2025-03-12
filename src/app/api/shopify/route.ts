@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
             if (sessionId) _customAttributes.push({ key: "* Order ID", value: sessionId });
             _customAttributes.push({
                 key: "* Priority",
-                value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Normal Delivery (2-7 days)"
+                value: deliveryType === 'rush' ? "Rush Delivery (1 business day)" : "Normal Delivery (2-7 business days)"
             });
             if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
             if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
