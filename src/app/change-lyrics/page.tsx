@@ -211,11 +211,11 @@ function generateLyricsData(text: string): LyricLine[] {
 function ChangeLyricsPageContent() {
     // Get URL parameters
     const searchParams = useSearchParams();
-    const songId = searchParams.get('id');
-    const songTitle = searchParams.get('title');
-    const songArtist = searchParams.get('artist');
-    const songImage = searchParams.get('image');
-    const songUrl = searchParams.get('url');
+    const [songId, setSongId] = useState<string | null>(searchParams.get('id'));
+    const [songTitle, setSongTitle] = useState<string | null>(searchParams.get('title'));
+    const [songArtist, setSongArtist] = useState<string | null>(searchParams.get('artist'));
+    const [songImage, setSongImage] = useState<string | null>(searchParams.get('image'));
+    const [songUrl, setSongUrl] = useState<string | null>(searchParams.get('url'));
     const isManualEntry = searchParams.get('manualEntry') === 'true';
     const router = useRouter();
 
@@ -280,6 +280,26 @@ function ChangeLyricsPageContent() {
 
     // Calculate cost
     const [cost, setCost] = useState(BASE_COST);
+    useEffect(() => {
+        // Only run if song details are not already set (e.g., from URL params)
+        if (!songId && !songTitle && !songArtist && !songImage) {
+            try {
+                const storedSongId = localStorage.getItem('songId');
+                const storedSongTitle = localStorage.getItem('songTitle');
+                const storedSongArtist = localStorage.getItem('songArtist');
+                const storedSongImage = localStorage.getItem('songImage');
+                const storedSongUrl = localStorage.getItem('songUrl');
+
+                if (storedSongId) setSongId(storedSongId);
+                if (storedSongTitle) setSongTitle(storedSongTitle);
+                if (storedSongArtist) setSongArtist(storedSongArtist);
+                if (storedSongImage) setSongImage(storedSongImage);
+                if (storedSongUrl) setSongUrl(storedSongUrl);
+            } catch (error) {
+                console.error('Error retrieving song details from localStorage:', error);
+            }
+        }
+    }, [songArtist, songId, songImage, songTitle]);
 
     // Update cost whenever word changes are modified
     useEffect(() => {
@@ -357,10 +377,17 @@ function ChangeLyricsPageContent() {
             }
         };
 
-        // Skip API fetch for manual entry or if title/artist are missing
+        // Skip API fetch if manual entry or required data is missing
         if (isManualEntry || !songTitle || !songArtist) return;
 
-        // Now we check both conditions - songId and required data
+        // Check if there are saved lyrics in localStorage
+        const savedLyrics = localStorage.getItem('lyrics');
+        if (savedLyrics) {
+            console.log('Skipping API fetch; using saved lyrics from localStorage');
+            return; // Exit early if saved lyrics exist
+        }
+
+        // Proceed with fetch if no saved lyrics
         if (songId) {
             fetchLyricsByTitleAndArtist(songTitle, songArtist);
         }
@@ -368,7 +395,7 @@ function ChangeLyricsPageContent() {
         return () => {
             isMounted = false;
         };
-    }, [songTitle, songArtist, songId, isManualEntry]); // Added songId to dependency array
+    }, [songTitle, songArtist, songId, isManualEntry]);
 
     // State Restoration for Non-Manual Entry
     useEffect(() => {
@@ -925,7 +952,7 @@ function ChangeLyricsPageContent() {
                                         <Form.Control asChild>
                                             <textarea
                                                 className="flex min-h-[80px] w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
-                                                rows={6}
+                                                rows={4}
                                                 value={specialRequests}
                                                 onChange={(e) => setSpecialRequests(e.target.value)}
                                                 placeholder="Add any special requests here (e.g. special details & pronunciations, etc.) ..."

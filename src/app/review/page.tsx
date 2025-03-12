@@ -1,9 +1,9 @@
 // src\app\review\page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronRight, TicketPercent } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import React from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Separator from "@radix-ui/react-separator";
@@ -11,6 +11,7 @@ import SignInToSaveButton from "@/components/SignInToSaveButton";
 import { Toaster, toast } from "sonner";
 import { StepIndicator, StepDivider, type StepProps } from "@/components/layouts/StepNavigation";
 import BackButton from "@/components/BackButton";
+import Image from "next/image";
 
 // src/app/review/page.tsx
 
@@ -64,13 +65,21 @@ function OrderReviewPageContent() {
             type: "delivery",
         },
     ]);
+    const wordChangedCount = useMemo(() => {
+        return lyrics
+            .filter(line => line.modified !== line.original)
+            .reduce((total, line) => {
+                return total + (line.wordChanges?.filter(change => change.hasChanged)?.length || 0);
+            }, 0);
+    }, [lyrics]);
 
     // Load data from localStorage
     useEffect(() => {
         try {
             setSongTitle(localStorage.getItem("songTitle") || "");
             setSongArtist(localStorage.getItem("songArtist") || "");
-            setSongImage(localStorage.getItem("songImage") || "");
+            const storedImage = localStorage.getItem("songImage") || "";
+            setSongImage(storedImage ? decodeURIComponent(storedImage) : "");
             setSongUrl(localStorage.getItem("songUrl") || "");
             const storedLyrics = JSON.parse(localStorage.getItem("lyrics") || "[]");
             const storedCost = parseFloat(localStorage.getItem("cost") || "0");
@@ -290,14 +299,40 @@ function OrderReviewPageContent() {
                                 Review Your Order
                             </h3>
 
-                            {(songTitle || songArtist) && (
-                                <div className="p-3 bg-primary/10 rounded-lg mb-2">
-                                    {songTitle && (
-                                        <h4 className="text-white font-azbuka text-lg">{songTitle}</h4>
+                            {/* Song Image, Title, and Artist Display */}
+                            {(songImage || songTitle || songArtist) && (
+                                <div className="p-4 bg-primary/10 rounded-lg mb-4 flex flex-col sm:flex-row items-center gap-4">
+                                    {songImage && (
+                                        <div className="relative w-40 h-40 flex-shrink-0" id="song-image-container">
+                                            <Image
+                                                src={decodeURIComponent(songImage)}
+                                                alt={songTitle || "Song Image"}
+                                                layout="fill"
+                                                objectFit="cover"
+                                                className="rounded-lg"
+                                                onError={(e) => {
+                                                    // When error occurs, find and remove the parent container
+                                                    const container = document.getElementById('song-image-container');
+                                                    if (container) {
+                                                        container.style.display = 'none';
+                                                    }
+                                                    console.error(`Failed to load image: '${songImage}'. Error: '${e}'.`);
+                                                }}
+                                            />
+                                        </div>
                                     )}
-                                    {songArtist && (
-                                        <p className="text-white/80 font-roboto text-sm mt-1">by {songArtist}</p>
-                                    )}
+                                    <div className="flex flex-col items-center sm:items-start">
+                                        {songTitle && (
+                                            <h4 className="text-white font-azbuka text-lg">
+                                                {songTitle}
+                                            </h4>
+                                        )}
+                                        {songArtist && (
+                                            <p className="text-white/80 font-roboto text-sm mt-1">
+                                                by {songArtist}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -324,21 +359,21 @@ function OrderReviewPageContent() {
                                 </div>
                             )}
 
-                            {!isLoading && (
+                            {/* {!isLoading && (
                                 <div className="relative w-full rounded-lg p-4 dark:border-gray-100/5 bg-primary/80 text-white/80" role="alert">
                                     <div className="flex flex-row gap-2 text-sm md:text-base md:items-center">
                                         <TicketPercent />
                                         <strong>You can add discount codes at checkout.</strong>
                                     </div>
                                 </div>
-                            )}
+                            )} */}
 
                             {!isLoading && (
                                 <div className="flex flex-col space-y-2 overflow-y-auto md:h-auto lg:h-full">
                                     {/* Display Lyrics Summary */}
                                     <div className="space-y-2 my-4">
                                         <div className="p-4 bg-white rounded-lg">
-                                            <h4 className="text-lg font-medium text-blue-800">Lyrics Changes</h4>
+                                            <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({wordChangedCount} word{wordChangedCount !== 1 ? 's' : ''})</h4>
                                             {lyrics.filter(line => line.modified !== line.original).length > 0 ? (
                                                 <div className="overflow-x-auto">
                                                     <table className="min-w-full border border-gray-200">
