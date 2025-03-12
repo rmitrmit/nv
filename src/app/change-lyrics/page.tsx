@@ -336,6 +336,7 @@ function ChangeLyricsPageContent() {
 
         try {
             const storedLyrics = localStorage.getItem('manualEntryLyrics');
+            console.log('Retrieved manualEntryLyrics:', storedLyrics);
             if (storedLyrics) {
                 setOriginalLyricsText(storedLyrics);
                 setLyrics(generateLyricsData(storedLyrics));
@@ -592,39 +593,32 @@ function ChangeLyricsPageContent() {
 
         setLyrics(prevLyrics => {
             const updatedLyrics = prevLyrics.map(line => {
-                if (!line.modified.includes(replaceTerm)) {
+                // Skip processing if the exact word isn't in the line
+                // Using word boundary in regex to match whole words only
+                const wholeWordRegex = new RegExp(`\\b${escapeRegExp(replaceTerm)}\\b`, 'i');
+                if (!wholeWordRegex.test(line.modified)) {
                     return line;
                 }
 
-                // Split the line into words
-                const words = line.modified.split(/\b/);
-
-                // Process each word to see if it contains the replace term
-                const newMarked = words.map(word => {
-                    // Check if this word contains the replaceTerm (case insensitive)
-                    if (word.match(new RegExp(escapeRegExp(replaceTerm), 'i'))) {
-                        // Replace the matched part while preserving case
-                        const modifiedWord = word.replace(
-                            new RegExp(escapeRegExp(replaceTerm), 'gi'),
-                            match => {
-                                // Determine the case pattern of the matched text
-                                if (match === match.toUpperCase()) {
-                                    return replaceWith.toUpperCase();
-                                } else if (match === match.toLowerCase()) {
-                                    return replaceWith.toLowerCase();
-                                } else if (match[0] === match[0].toUpperCase()) {
-                                    return replaceWith.charAt(0).toUpperCase() + replaceWith.slice(1).toLowerCase();
-                                } else {
-                                    return replaceWith;
-                                }
-                            }
-                        );
-
-                        // Highlight the entire word
-                        return `<span class="text-red-600">${modifiedWord}</span>`;
+                // Replace only whole words that match exactly
+                const newMarked = line.modified.replace(
+                    new RegExp(`\\b${escapeRegExp(replaceTerm)}\\b`, 'gi'),
+                    match => {
+                        // Determine the case pattern of the matched text
+                        let replacementText;
+                        if (match === match.toUpperCase()) {
+                            replacementText = replaceWith.toUpperCase();
+                        } else if (match === match.toLowerCase()) {
+                            replacementText = replaceWith.toLowerCase();
+                        } else if (match[0] === match[0].toUpperCase()) {
+                            replacementText = replaceWith.charAt(0).toUpperCase() +
+                                replaceWith.slice(1).toLowerCase();
+                        } else {
+                            replacementText = replaceWith;
+                        }
+                        return `<span class="text-red-600">${replacementText}</span>`;
                     }
-                    return word;
-                }).join('');
+                );
 
                 const newModifiedPlain = stripHtmlAndSymbols(newMarked);
                 const wordChanges = calculateWordChanges(line.original, newModifiedPlain);
@@ -650,7 +644,6 @@ function ChangeLyricsPageContent() {
 
         toast.success(`Replaced all instances of "${replaceTerm}" with "${replaceWith}"`);
     };
-
     const handleResetLyrics = () => {
         setLyrics(prevLyrics => {
             const resetLyrics = prevLyrics.map(line => ({

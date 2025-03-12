@@ -123,6 +123,7 @@ const SearchPanel = () => {
     const [searchResults, setSearchResults] = useState<Song[]>([]);
     const [selectedSong, setSelectedSong] = useState<Song | null>(null);
     const [showResults, setShowResults] = useState(false);
+    const [isButtonLoading, setIsButtonLoading] = useState(false);
 
     // Function to search the Genius API
     const searchGenius = async (query: string) => {
@@ -259,16 +260,21 @@ const SearchPanel = () => {
                 <div className="flex flex-row py-4">
                     <button
                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal 
-                            transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none 
-                            disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none 
-                            [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground 
-                            hover:bg-primary/90 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 
-                            active:bg-primary/75 active:ring-0 h-10 px-5 rounded-md ml-auto text-sm md:text-base"
-                        type="button"
-                        onClick={handleNext}
+        transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none 
+        disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none 
+        [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground 
+        hover:bg-primary/90 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 
+        active:bg-primary/75 active:ring-0 h-10 px-5 rounded-md ml-auto text-sm md:text-base"
+                        type="submit"
+                        disabled={isButtonLoading}
+                        onClick={(e) => {
+                            e.preventDefault(); // Prevent default form submission if needed
+                            setIsButtonLoading(true);
+                            handleNext()
+                        }}
                     >
-                        Next
-                        <ChevronRight className="-mr-1" />
+                        {isButtonLoading ? "Processing..." : "Next"}
+                        {!isButtonLoading && <ChevronRight className="-mr-1" />}
                     </button>
                 </div>
             )}
@@ -279,6 +285,7 @@ const SearchPanel = () => {
 // Also update the ManualEntryPanel component:
 const ManualEntryPanel = () => {
     const router = useRouter();
+    const [isButtonLoading, setIsButtonLoading] = useState(false);
     const [formValues, setFormValues] = useState<ManualEntryFields>({
         songUrl: '',
         lyrics: ''
@@ -330,6 +337,8 @@ const ManualEntryPanel = () => {
     // In ManualEntryPanel
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setIsButtonLoading(true);
+
         if (validateForm()) {
             localStorage.setItem('manualEntryLyrics', formValues.lyrics);
             // Add a slight delay to ensure localStorage is written
@@ -337,12 +346,17 @@ const ManualEntryPanel = () => {
                 router.push(`/change-lyrics?url=${encodeURIComponent(formValues.songUrl)}&manualEntry=true`);
             }, 50); // 50ms delay
         } else {
-            const firstError = Object.values(formErrors)[0];
+            // Show toast for the first error
+            const firstErrorField = Object.keys(formErrors)[0];
+            const firstError = formErrors[firstErrorField];
+
             if (firstError) {
-                toast.error('Invalid input', {
+                toast.error('Please check your input', {
                     description: firstError,
                 });
             }
+
+            setIsButtonLoading(false);
         }
     };
 
@@ -358,13 +372,13 @@ const ManualEntryPanel = () => {
                         <Link className="absolute left-3 top-1/2 -translate-y-1/2 size-4 md:size-5 text-gray-400" />
                         <Form.Control asChild>
                             <input
-                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-1 
+                                className={`flex w-full rounded-md border ${formErrors.songUrl ? 'border-red-600 border-2' : 'border-component-input'} bg-foundation px-3 py-1 
                                     shadow-sm shadow-black/10 transition-colors file:mr-1.5 file:mt-1.5 file:cursor-pointer 
                                     file:border-0 file:bg-transparent file:p-0 file:text-sm file:font-medium 
                                     file:text-foundation-foreground placeholder:text-muted focus-visible:outline-none 
                                     focus-visible:ring focus-visible:ring-secondary/50 disabled:cursor-not-allowed 
                                     disabled:opacity-50 dark:bg-foundation-secondary 
-                                    dark:placeholder:text-muted/75 h-10 md:h-12 pl-10 text-sm md:text-base text-primary"
+                                    dark:placeholder:text-muted/75 h-10 md:h-12 pl-10 text-sm md:text-base text-primary`}
                                 placeholder="https://..."
                                 type="text"
                                 name="songUrl"
@@ -387,11 +401,11 @@ const ManualEntryPanel = () => {
                 <Form.Field className="mb-3.5 flex flex-col gap-0.5 last:mb-0 relative" name="lyrics">
                     <Form.Control asChild>
                         <textarea
-                            className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 
+                            className={`flex w-full rounded-md border ${formErrors.lyrics ? 'border-red-600 border-2' : 'border-component-input'} bg-foundation px-3 py-2 
                                 ring-offset-foundation placeholder:text-muted focus-visible:outline-none 
                                 focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed 
-                                disabled:opacity-50 dark:bg-foundation-secondary  text-sm 
-                                md:text-base text-primary min-h-[200px] md:min-h-[300px] resize-y"
+                                disabled:opacity-50 dark:bg-foundation-secondary text-sm 
+                                md:text-base text-primary min-h-[200px] md:min-h-[300px] resize-y`}
                             placeholder="Paste the original lyrics here..."
                             rows={15}
                             name="lyrics"
@@ -416,9 +430,10 @@ const ManualEntryPanel = () => {
                                 hover:bg-primary/90 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 
                                 active:bg-primary/75 active:ring-0 h-10 px-5 rounded-md ml-auto text-sm md:text-base"
                             type="submit"
+                            disabled={isButtonLoading}
                         >
-                            Next
-                            <ChevronRight className="-mr-1" />
+                            {isButtonLoading ? "Processing..." : "Next"}
+                            {!isButtonLoading && <ChevronRight className="-mr-1" />}
                         </button>
                     </Form.Submit>
                 </div>
