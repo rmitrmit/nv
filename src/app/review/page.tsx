@@ -38,6 +38,7 @@ function OrderReviewPageContent() {
     const router = useRouter();
     const [songTitle, setSongTitle] = useState("");
     const [songArtist, setSongArtist] = useState("");
+    const [songImage, setSongImage] = useState("");
     const [songUrl, setSongUrl] = useState("");
     const [currentStep, setCurrentStep] = useState(3);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -69,6 +70,7 @@ function OrderReviewPageContent() {
         try {
             setSongTitle(localStorage.getItem("songTitle") || "");
             setSongArtist(localStorage.getItem("songArtist") || "");
+            setSongImage(localStorage.getItem("songImage") || "");
             setSongUrl(localStorage.getItem("songUrl") || "");
             const storedLyrics = JSON.parse(localStorage.getItem("lyrics") || "[]");
             const storedCost = parseFloat(localStorage.getItem("cost") || "0");
@@ -157,6 +159,7 @@ function OrderReviewPageContent() {
                 wordChanged: wordChangedCount,
                 songName: songTitle || undefined,
                 artist: songArtist || undefined,
+                songImage: songImage || undefined,
                 songUrl: songUrl || undefined,
                 deliveryType,
                 lyrics: lyricsChanges,
