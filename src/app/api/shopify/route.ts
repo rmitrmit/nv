@@ -54,6 +54,73 @@ interface DraftOrderResponse {
     errors?: GraphQLError[];
 }
 
+function formatLine(id: number, original: string, modified: string): string {
+    // Tokenize both strings
+    const originalTokens: string[] = tokenize(original);
+    const modifiedTokens: string[] = tokenize(modified);
+
+    // Get word tokens (excluding punctuation)
+    const originalWords: string[] = originalTokens.filter(isWord);
+    const modifiedWords: string[] = modifiedTokens.filter(isWord);
+
+    // Find indices of changed words or missing words
+    const changedIndices: Set<number> = new Set();
+    for (let i = 0; i < Math.max(originalWords.length, modifiedWords.length); i++) {
+        if (i >= modifiedWords.length || i >= originalWords.length || modifiedWords[i] !== originalWords[i]) {
+            changedIndices.add(i);
+        }
+    }
+
+    // Wrap changed or missing words in modified tokens
+    let wordIndex = 0;
+    const formattedTokens: string[] = [];
+    for (const token of modifiedTokens) {
+        if (isWord(token)) {
+            if (changedIndices.has(wordIndex)) {
+                formattedTokens.push(`[${token}]`);
+            } else {
+                formattedTokens.push(token);
+            }
+            wordIndex++;
+        } else {
+            formattedTokens.push(token);
+        }
+    }
+
+    // Handle missing words by appending `<>` where words were removed
+    while (wordIndex < originalWords.length) {
+        formattedTokens.push("[]");
+        wordIndex++;
+    }
+
+    // Join tokens with proper spacing
+    let result: string = formattedTokens[0] || "";
+    for (let i = 1; i < formattedTokens.length; i++) {
+        if (isAttachingPunctuation(formattedTokens[i])) {
+            result += formattedTokens[i];
+        } else {
+            result += " " + formattedTokens[i];
+        }
+    }
+
+    // Return formatted line
+    return `${id}: "${original}" → "${result}"\n`;
+}
+
+// Helper functions with TypeScript types
+function tokenize(text: string): string[] {
+    return text.match(/[a-zA-Z0-9']+|[^a-zA-Z0-9'\s]+/g) || [];
+}
+
+function isWord(token: string): boolean {
+    return /[a-zA-Z0-9']/.test(token);
+}
+
+function isAttachingPunctuation(token: string): boolean {
+    return [",", ".", "!", "?", ";", ":", ")", "]", "}", "\"", "'"].includes(token);
+}
+
+
 export async function POST(request: NextRequest) {
     try {
         // Check environment variables
@@ -121,8 +188,9 @@ export async function POST(request: NextRequest) {
 
         const formattedLyricsChanges = lyrics
             .filter(line => line.modified !== line.original)
-            .map((line) => `${line.id}: "${line.original}" → "${line.modified}"`)
+            .map(line => formatLine(line.id, line.original, line.modified))
             .join("\n") || "No lyrics changes specified";
+
 
         const customAttributes = [
             { key: 'Order Id', value: sessionId },
@@ -162,43 +230,43 @@ export async function POST(request: NextRequest) {
             }
         `;
 
-            const _customAttributes = [];
-            if (sessionId) _customAttributes.push({ key: "* Order ID", value: sessionId });
-            _customAttributes.push({
-                key: "* Priority",
-                value: deliveryType === 'rush' ? "Rush Delivery (1 business day)" : "Normal Delivery (2-7 business days)"
-            });
-            if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
-            if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
-            if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
-            _customAttributes.push({
-                key: "* Lyrics Change",
-                value: `\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`
-            });
-            if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
-            _customAttributes.push({
-                key: "* Order Status",
-                value: deliveryType === 'rush' ? "We will update you via your email (1 day)" : "We will update you via your email (2-7 days)"
-            });
-            if (songImage) _customAttributes.push({ key: "* Song Image", value: songImage });
+        const _customAttributes = [];
+        if (sessionId) _customAttributes.push({ key: "* Order ID", value: sessionId });
+        _customAttributes.push({
+            key: "* Priority",
+            value: deliveryType === 'rush' ? "Rush Delivery (1 business day)" : "Normal Delivery (2-7 business days)"
+        });
+        if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
+        if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
+        if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
+        _customAttributes.push({
+            key: "* Lyrics Change",
+            value: `\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`
+        });
+        if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
+        _customAttributes.push({
+            key: "* Order Status",
+            value: deliveryType === 'rush' ? "We will update you via your email (1 day)" : "We will update you via your email (2-7 days)"
+        });
+        if (songImage) _customAttributes.push({ key: "* Song Image", value: songImage });
 
-            const draftOrderInput = {
-                lineItems: [{
-                    quantity: 1,
-                    title: "Change Song Lyrics Service | Nicevois.com",
-                    originalUnitPrice: "0.00",//String(price.toFixed(2)), // Standardized format
-                    customAttributes: _customAttributes,
-                    taxable: false
-                }],
-                customAttributes,
-                note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
-                tags: [`${deliveryType}-delivery`, "custom-lyrics"],
-                shippingLine: {
-                    title: "Digital Delivery",
-                    price: price.toFixed(2)
-                },
-                taxExempt: true,
-            };
+        const draftOrderInput = {
+            lineItems: [{
+                quantity: 1,
+                title: "Change Song Lyrics Service | Nicevois.com",
+                originalUnitPrice: "0.00",//String(price.toFixed(2)), // Standardized format
+                customAttributes: _customAttributes,
+                taxable: false
+            }],
+            customAttributes,
+            note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
+            tags: [`${deliveryType}-delivery`, "custom-lyrics"],
+            shippingLine: {
+                title: "Digital Delivery",
+                price: price.toFixed(2)
+            },
+            taxExempt: true,
+        };
 
         const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}.myshopify.com/admin/api/2025-01/graphql.json`, {
             method: 'POST',
