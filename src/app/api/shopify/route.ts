@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
                 taxable: false
             }],
             // customAttributes,
-            note: `Lyrics change:\n(${wordChanged} word${wordChanged !== 1 ? 's' : ''})\n${formattedLyricsChanges}`,
+            // note: `Lyrics change:\n(${wordChanged} word${wordChanged !== 1 ? 's' : ''})\n${formattedLyricsChanges}`,
             tags: [`${deliveryType}-delivery`, "custom-lyrics"],
             shippingLine: {
                 title: "Digital Delivery",
