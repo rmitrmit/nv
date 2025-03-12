@@ -369,9 +369,14 @@ function ChangeLyricsPageContent() {
             try {
                 setIsLoading(true);
                 const response = await fetch(`/api/genius/lyrics?track_name=${encodeURIComponent(songTitle)}&artist_name=${encodeURIComponent(songArtist)}`);
+
                 if (!response.ok) {
                     toast.error('We had problem fetching the lyrics. Please go "back" and select "manual entry" tab.');
                     setIsError(true);
+                    setFormErrors(prevErrors => ({
+                        ...prevErrors,
+                        lyrics: 'We had problem fetching the lyrics. Please go "back" and select "manual entry" tab.'
+                    }));
                     throw new Error(`API error: ${response.status}`);
                 }
                 const data = await response.json();
