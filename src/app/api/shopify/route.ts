@@ -192,15 +192,15 @@ export async function POST(request: NextRequest) {
             .join("\n") || "No lyrics changes specified";
 
 
-        const customAttributes = [
-            { key: 'Order Id', value: sessionId },
-            { key: 'Delivery Type', value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Standard Delivery (2-7 days)" },
-            { key: 'Song Name', value: songName || 'Not specified' },
-            { key: 'Artist', value: artist || 'Not specified' },
-            { key: 'Song Url', value: songUrl || 'Not specified' },
-            { key: 'Special Requests', value: specialRequests || 'Not specified' },
-            { key: 'Song Image', value: songImage || 'Not specified' },
-        ];
+        // const customAttributes = [
+        //     { key: 'Order Id', value: sessionId },
+        //     { key: 'Delivery Type', value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Standard Delivery (2-7 days)" },
+        //     { key: 'Song Name', value: songName || 'Not specified' },
+        //     { key: 'Artist', value: artist || 'Not specified' },
+        //     { key: 'Song Url', value: songUrl || 'Not specified' },
+        //     { key: 'Special Requests', value: specialRequests || 'Not specified' },
+        //     { key: 'Song Image', value: songImage || 'Not specified' },
+        // ];
 
         const createDraftOrderQuery = `
             mutation draftOrderCreate($input: DraftOrderInput!) {
@@ -236,8 +236,8 @@ export async function POST(request: NextRequest) {
             key: "* Priority",
             value: deliveryType === 'rush' ? "Rush Delivery (1 business day)" : "Normal Delivery (2-7 business days)"
         });
-        if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
-        if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
+        if (songName) _customAttributes.push({ key: "* Song", value: songName });
+        if (artist) _customAttributes.push({ key: "* Artist", value: artist });
         if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
         _customAttributes.push({
             key: "* Lyrics Change",
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
                 customAttributes: _customAttributes,
                 taxable: false
             }],
-            customAttributes,
+            // customAttributes,
             note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
             tags: [`${deliveryType}-delivery`, "custom-lyrics"],
             shippingLine: {
