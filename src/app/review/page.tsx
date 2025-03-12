@@ -43,7 +43,7 @@ function OrderReviewPageContent() {
     const [songUrl, setSongUrl] = useState("");
     const [currentStep, setCurrentStep] = useState(3);
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+    const [lyricsData, setLyricsData] = useState<LyricLine[]>([]);
     const [cost, setCost] = useState(0);
     const [specialRequests, setSpecialRequests] = useState("");
     const [productOptions, setProductOptions] = useState<ProductOption[]>([
@@ -65,6 +65,30 @@ function OrderReviewPageContent() {
             type: "delivery",
         },
     ]);
+    const lyrics = useMemo(() => {
+        return lyricsData
+            .map(line => {
+                const countedPositions = new Set<number>();
+                const filteredChanges = line.wordChanges.filter(change => {
+                    if (!change.hasChanged || countedPositions.has(change.originalIndex)) return false;
+                    const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                    const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                    const isPunctuationChangeOnly =
+                        originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
+                        originalWithoutPunctuation.length > 0;
+                    if (isPunctuationChangeOnly) return false;
+                    countedPositions.add(change.originalIndex);
+                    return true;
+                });
+
+                return {
+                    ...line,
+                    wordChanges: filteredChanges,
+                };
+            })
+            .filter(line => line.wordChanges.length > 0);
+    }, [lyricsData]);
+
     const wordChangedCount = useMemo(() => {
         return lyrics.reduce((total, line) => {
             if (line.modified === line.original) return total;
@@ -107,7 +131,7 @@ function OrderReviewPageContent() {
             const storedCost = parseFloat(localStorage.getItem("cost") || "0");
             const storedSpecialRequests = localStorage.getItem("specialRequests") || "";
 
-            setLyrics(storedLyrics);
+            setLyricsData(storedLyrics); // ✅ Fixed the incorrect function name
             setCost(storedCost);
             setSpecialRequests(storedSpecialRequests);
         } catch (error) {
@@ -115,6 +139,7 @@ function OrderReviewPageContent() {
             toast.error("Failed to load order data");
         }
     }, []);
+
 
     const toggleProductSelection = (productId: string) => {
         setProductOptions((prevOptions) => {
@@ -145,6 +170,14 @@ function OrderReviewPageContent() {
 
     const handleCheckout = async () => {
         setIsLoading(true);
+
+        if (wordChangedCount < 1) {
+            toast.error("No significant changes detected", {
+                description: "You must modify at least one word to proceed with checkout.",
+            });
+            setIsLoading(false);
+            return;
+        }
 
         if (lyrics.filter(line => line.modified !== line.original).length === 0) {
             toast.error("No lyrics changes detected", {
@@ -213,16 +246,13 @@ function OrderReviewPageContent() {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
-                    // Redirect to Shopify invoice URL using top-level navigation if in iframe
                     try {
-                        // Check if we can access top (cross-origin issues might prevent this)
                         if (window.top && window.top !== window) {
                             window.top.location.href = result.data.invoiceUrl;
                         } else {
                             window.parent.location.href = result.data.invoiceUrl;
                         }
                     } catch {
-                        // Fallback if security restrictions prevent access to top
                         window.location.href = result.data.invoiceUrl;
                     }
                     return;
@@ -247,6 +277,7 @@ function OrderReviewPageContent() {
             setIsLoading(false);
         }
     };
+
 
     const steps: StepProps[] = [
         { step: 1, label: "Choose A Song", isActive: currentStep === 1, isComplete: currentStep > 1 },

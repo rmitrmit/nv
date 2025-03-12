@@ -93,6 +93,26 @@ function calculateWordChanges(original: string, modified: string): WordChange[] 
             continue;
         }
 
+        if (origPos < originalWords.length && modPos < modifiedWords.length) {
+            const originalWithoutPunctuation = originalWords[origPos].replace(/[.,()[\]{}:;!?-]+/g, '').toLowerCase();
+            const modifiedWithoutPunctuation = modifiedWords[modPos].replace(/[.,()[\]{}:;!?-]+/g, '').toLowerCase();
+
+            // If only punctuation is different, mark as unchanged
+            if (originalWithoutPunctuation === modifiedWithoutPunctuation && originalWithoutPunctuation.length > 0) {
+                changes.push({
+                    originalWord: originalWords[origPos],
+                    newWord: modifiedWords[modPos],
+                    originalIndex: origPos,
+                    newIndex: modPos,
+                    hasChanged: false // Mark as unchanged since only punctuation differs
+                });
+
+                origPos++;
+                modPos++;
+                continue;
+            }
+        }
+
         // Case 2: Words in both texts, but don't match - likely a replacement
         if (origPos < originalWords.length && modPos < modifiedWords.length) {
             // Check if next words match to confirm this is a simple replacement
@@ -254,18 +274,8 @@ function ChangeLyricsPageContent() {
                 return;
             }
 
-            // Skip if it's just a punctuation change
-            const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-            const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-
-            const isPunctuationChangeOnly =
-                originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
-                originalWithoutPunctuation.length > 0;
-
-            if (!isPunctuationChangeOnly) {
-                changedWordCount++;
-                countedPositions.add(change.originalIndex);
-            }
+            changedWordCount++;
+            countedPositions.add(change.originalIndex);
         });
 
         return changedWordCount;
@@ -646,7 +656,9 @@ function ChangeLyricsPageContent() {
 
     const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
-        const hasChanges = lyrics.some((line) => line.modified !== line.original);
+        const hasChanges = lyrics.some((line) =>
+            line.wordChanges && line.wordChanges.some(change => change.hasChanged)
+        );
         if (!hasChanges) {
             toast.error('No changes made', {
                 description: 'Please modify at least one lyric before proceeding.',
@@ -873,7 +885,6 @@ function ChangeLyricsPageContent() {
                                                 </thead>
                                                 <tbody className="[&_tr:last-child]:border-0 bg-white">
                                                     {lyrics.map((line) => {
-                                                        // const hasChanges = line.wordChanges.some(w => w.hasChanged);
                                                         return (
                                                             <tr key={line.id} className="border-b transition-colors data-[state=selected]:bg-muted">
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium text-sm md:text-base text-muted">
@@ -891,6 +902,7 @@ function ChangeLyricsPageContent() {
                                                                         onBlur={(e) => handleLyricChange(line.id, e.currentTarget.textContent || '')}
                                                                         suppressContentEditableWarning={true}
                                                                         dangerouslySetInnerHTML={{ __html: line.markedText || line.modified }}
+                                                                        className="outline-none p-1 rounded hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
                                                                     />
                                                                 </td>
                                                             </tr>
