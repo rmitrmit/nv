@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
                     quantity: 1,
                     title: "Change Song Lyrics Service | Nicevois.com",
                     originalUnitPrice: "0.00",//String(price.toFixed(2)), // Standardized format
-                    _customAttributes,
+                    customAttributes: _customAttributes,
                     taxable: false
                 }],
                 customAttributes,
