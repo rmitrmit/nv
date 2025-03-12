@@ -308,7 +308,6 @@ export async function POST(request: NextRequest) {
             },
             taxExempt: true,
         };
-        console.log(draftOrderInput);
 
         const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}.myshopify.com/admin/api/2025-01/graphql.json`, {
             method: 'POST',
