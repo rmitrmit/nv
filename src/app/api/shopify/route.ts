@@ -171,7 +171,10 @@ export async function POST(request: NextRequest) {
             if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
             if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
             if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
-            if (wordChanged) _customAttributes.push({ key: "* Words Changed", value: wordChanged.toString() });
+            _customAttributes.push({
+                key: "* Lyrics Change",
+                value: `\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`
+            });
             if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
             _customAttributes.push({
                 key: "* Order Status",
