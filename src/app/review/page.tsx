@@ -191,14 +191,6 @@ function OrderReviewPageContent() {
                     modified: line.modified,
                 }));
 
-            // Fixed word changes count calculation
-            const wordChangedCount = lyrics
-                .filter(line => line.modified !== line.original)
-                .reduce((total, line) => {
-                    // Count only words that have actually changed (hasChanged = true)
-                    return total + (line.wordChanges?.filter(change => change.hasChanged)?.length || 0);
-                }, 0);
-
             const orderData = {
                 sessionId,
                 price: calculateTotal(),
