@@ -66,12 +66,34 @@ function OrderReviewPageContent() {
         },
     ]);
     const wordChangedCount = useMemo(() => {
-        return lyrics
-            .filter(line => line.modified !== line.original)
-            .reduce((total, line) => {
-                return total + (line.wordChanges?.filter(change => change.hasChanged)?.length || 0);
-            }, 0);
+        return lyrics.reduce((total, line) => {
+            if (line.modified === line.original) return total;
+
+            let changedWordCount = 0;
+            const countedPositions = new Set<number>();
+
+            line.wordChanges.forEach(change => {
+                if (!change.hasChanged || countedPositions.has(change.originalIndex)) return;
+
+                // Remove punctuation from words
+                const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+
+                // Check if it's only a punctuation change
+                const isPunctuationChangeOnly =
+                    originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
+                    originalWithoutPunctuation.length > 0;
+
+                if (!isPunctuationChangeOnly) {
+                    changedWordCount++;
+                    countedPositions.add(change.originalIndex);
+                }
+            });
+
+            return total + changedWordCount;
+        }, 0);
     }, [lyrics]);
+
 
     // Load data from localStorage
     useEffect(() => {
