@@ -22,6 +22,7 @@ interface Song {
     title: string;
     artist: string;
     image: string;
+    url: string;
 }
 
 interface SearchResultsProps {
@@ -181,7 +182,7 @@ const SearchPanel = () => {
         }
 
         // Navigate to the "change-lyrics" page with query parameters
-        router.push(`/change-lyrics?id=${selectedSong.id}&title=${encodeURIComponent(selectedSong.title)}&artist=${encodeURIComponent(selectedSong.artist)}&image=${encodeURIComponent(selectedSong.image)}`);
+        router.push(`/change-lyrics?id=${selectedSong.id}&title=${encodeURIComponent(selectedSong.title)}&artist=${encodeURIComponent(selectedSong.artist)}&image=${encodeURIComponent(selectedSong.image)}&url=${encodeURIComponent(selectedSong.url)}`);
     };
 
     return (
@@ -380,7 +381,7 @@ const ManualEntryPanel = () => {
                 </Form.Field>
 
                 <p className="scroll-m-20 font-roboto font-normal tracking-wide dark:text-white text-sm md:text-base text-white">
-                    Please add the lyrics from the original song. <a className="font-semibold text-white underline" href="https://songmeanings.com/" target="_blank" rel="noopener noreferrer">Search for Lyrics</a>
+                    Please add the lyrics from the original song. <a className="font-semibold text-white underline" href="https://www.azlyrics.com/" target="_blank" rel="noopener noreferrer">Search on AZLyrics</a>
                 </p>
 
                 <Form.Field className="mb-3.5 flex flex-col gap-0.5 last:mb-0 relative" name="lyrics">
