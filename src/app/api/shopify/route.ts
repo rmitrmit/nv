@@ -175,21 +175,23 @@ export async function POST(request: NextRequest) {
             if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: specialRequests });
             if (songImage) _customAttributes.push({ key: "* Song Image", value: songImage });
 
-        const draftOrderInput = {
-            lineItems: [{
-                quantity: 1,
-                title: "Change Song Lyrics Service | Nicevois.com",
-                originalUnitPrice: String(price.toFixed(2)), // Standardized format
-                _customAttributes
-            }],
-            customAttributes,
-            note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
-            tags: [`${deliveryType}-delivery`, "custom-lyrics"],
-            shippingLine: {
-                title: "Digital Delivery",
-                price: price.toFixed(2)
-            }
-        };
+            const draftOrderInput = {
+                lineItems: [{
+                    quantity: 1,
+                    title: "Change Song Lyrics Service | Nicevois.com",
+                    originalUnitPrice: String(price.toFixed(2)), // Standardized format
+                    _customAttributes,
+                    taxable: false
+                }],
+                customAttributes,
+                note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
+                tags: [`${deliveryType}-delivery`, "custom-lyrics"],
+                shippingLine: {
+                    title: "Digital Delivery",
+                    price: price.toFixed(2)
+                },
+                taxExempt: true,
+            };
 
         const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}.myshopify.com/admin/api/2025-01/graphql.json`, {
             method: 'POST',
