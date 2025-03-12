@@ -54,68 +54,109 @@ interface DraftOrderResponse {
     errors?: GraphQLError[];
 }
 
+type DiffWord = {
+    word: string;
+    inserted: boolean;
+};
+
+
+function diffWords(originalWords: string[], modifiedWords: string[]): DiffWord[] {
+    const result: DiffWord[] = [];
+    let i = 0,
+        j = 0;
+    while (i < originalWords.length && j < modifiedWords.length) {
+        if (originalWords[i] === modifiedWords[j]) {
+            // Words match exactly.
+            result.push({ word: modifiedWords[j], inserted: false });
+            i++;
+            j++;
+        } else {
+            // If the next word in original matches the current modified word,
+            // treat the current original word as missing.
+            if (i + 1 < originalWords.length && originalWords[i + 1] === modifiedWords[j]) {
+                result.push({ word: "[]", inserted: true });
+                i++;
+            } else {
+                // Otherwise, treat it as a change.
+                result.push({ word: `[${modifiedWords[j]}]`, inserted: false });
+                i++;
+                j++;
+            }
+        }
+    }
+    // If there are any remaining original words, they were removed.
+    while (i < originalWords.length) {
+        result.push({ word: "[]", inserted: true });
+        i++;
+    }
+    // (If there are extra words in modified, mark them as changed.)
+    while (j < modifiedWords.length) {
+        result.push({ word: `<${modifiedWords[j]}>`, inserted: false });
+        j++;
+    }
+    return result;
+}
+
+
+function mergeWithOriginalTokens(originalTokens: string[], diff: DiffWord[]): string[] {
+    const result: string[] = [];
+    let wordIndex = 0;
+    for (const token of originalTokens) {
+        if (isWord(token)) {
+            if (wordIndex < diff.length) {
+                result.push(diff[wordIndex].word);
+                wordIndex++;
+            } else {
+                // Fallback if something went wrong.
+                result.push(token);
+            }
+        } else {
+            // For punctuation, use the original token.
+            result.push(token);
+        }
+    }
+    // If any diff words remain, append them.
+    while (wordIndex < diff.length) {
+        result.push(diff[wordIndex].word);
+        wordIndex++;
+    }
+    return result;
+}
+
+
 function formatLine(id: number, original: string, modified: string): string {
-    // Tokenize both strings
     const originalTokens: string[] = tokenize(original);
     const modifiedTokens: string[] = tokenize(modified);
 
-    // Get word tokens (excluding punctuation)
     const originalWords: string[] = originalTokens.filter(isWord);
     const modifiedWords: string[] = modifiedTokens.filter(isWord);
 
-    // Find indices of changed words or missing words
-    const changedIndices: Set<number> = new Set();
-    for (let i = 0; i < Math.max(originalWords.length, modifiedWords.length); i++) {
-        if (i >= modifiedWords.length || i >= originalWords.length || modifiedWords[i] !== originalWords[i]) {
-            changedIndices.add(i);
-        }
-    }
+    const diff = diffWords(originalWords, modifiedWords);
+    const mergedTokens = mergeWithOriginalTokens(originalTokens, diff);
 
-    // Wrap changed or missing words in modified tokens
-    let wordIndex = 0;
-    const formattedTokens: string[] = [];
-    for (const token of modifiedTokens) {
-        if (isWord(token)) {
-            if (changedIndices.has(wordIndex)) {
-                formattedTokens.push(`[${token}]`);
-            } else {
-                formattedTokens.push(token);
-            }
-            wordIndex++;
+    // Join tokens with spacing; punctuation tokens attach to the previous token.
+    let resultStr: string = mergedTokens[0] || "";
+    for (let i = 1; i < mergedTokens.length; i++) {
+        if (isAttachingPunctuation(mergedTokens[i])) {
+            resultStr += mergedTokens[i];
         } else {
-            formattedTokens.push(token);
+            resultStr += " " + mergedTokens[i];
         }
     }
-
-    // Handle missing words by appending `<>` where words were removed
-    while (wordIndex < originalWords.length) {
-        formattedTokens.push("[]");
-        wordIndex++;
-    }
-
-    // Join tokens with proper spacing
-    let result: string = formattedTokens[0] || "";
-    for (let i = 1; i < formattedTokens.length; i++) {
-        if (isAttachingPunctuation(formattedTokens[i])) {
-            result += formattedTokens[i];
-        } else {
-            result += " " + formattedTokens[i];
-        }
-    }
-
-    // Return formatted line
-    return `${id}: "${original}" → "${result}"\n`;
+    return `${id}: "${original}" → "${resultStr}"\n`;
 }
 
-// Helper functions with TypeScript types
+// Helper: splits text into words and punctuation tokens.
 function tokenize(text: string): string[] {
     return text.match(/[a-zA-Z0-9']+|[^a-zA-Z0-9'\s]+/g) || [];
 }
 
+// Helper: returns true if the token is a word.
 function isWord(token: string): boolean {
     return /[a-zA-Z0-9']/.test(token);
 }
 
+// Helper: returns true if the token is punctuation that should attach to the previous token.
 function isAttachingPunctuation(token: string): boolean {
     return [",", ".", "!", "?", ";", ":", ")", "]", "}", "\"", "'"].includes(token);
 }
@@ -236,8 +277,8 @@ export async function POST(request: NextRequest) {
             key: "* Priority",
             value: deliveryType === 'rush' ? "Rush Delivery (1 business day)" : "Normal Delivery (2-7 business days)"
         });
-        if (songName) _customAttributes.push({ key: "* Song", value: songName });
-        if (artist) _customAttributes.push({ key: "* Artist", value: artist });
+        if (songName) _customAttributes.push({ key: "* Song Name", value: songName });
+        if (artist) _customAttributes.push({ key: "* Song Artist", value: artist });
         if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
         _customAttributes.push({
             key: "* Lyrics Change",
@@ -259,7 +300,7 @@ export async function POST(request: NextRequest) {
                 taxable: false
             }],
             // customAttributes,
-            note: `Lyrics change:\n(Word changes: ${wordChanged})\n${formattedLyricsChanges}`,
+            note: `Lyrics change:\n(${wordChanged} word${wordChanged !== 1 ? 's' : ''})\n${formattedLyricsChanges}`,
             tags: [`${deliveryType}-delivery`, "custom-lyrics"],
             shippingLine: {
                 title: "Digital Delivery",
@@ -267,6 +308,7 @@ export async function POST(request: NextRequest) {
             },
             taxExempt: true,
         };
+        console.log(draftOrderInput);
 
         const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}.myshopify.com/admin/api/2025-01/graphql.json`, {
             method: 'POST',
