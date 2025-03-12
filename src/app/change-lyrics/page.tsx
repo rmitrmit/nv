@@ -473,7 +473,7 @@ function ChangeLyricsPageContent() {
                 const modifiedWords = normalizedNewText.split(/\s+/).filter(word => word.length > 0);
 
                 // Create a result array with all the words including original and new
-                const result: Array<{ text: string, type: 'unchanged' | 'changed' | 'changedPunctuation' | 'deleted' }> = [];
+                const result: Array<{ text: string, type: 'unchanged' | 'changed' | 'deleted' }> = [];
 
                 // First add all modified words with their status
                 modifiedWords.forEach((word, index) => {
@@ -490,10 +490,18 @@ function ChangeLyricsPageContent() {
                             originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
                             originalWithoutPunctuation.length > 0;
 
-                        result.push({
-                            text: word,
-                            type: isPunctuationChangeOnly ? 'changedPunctuation' : 'changed'
-                        });
+                        // If it's only a punctuation change, don't mark it as changed at all
+                        if (isPunctuationChangeOnly) {
+                            result.push({
+                                text: change.originalWord || word,
+                                type: 'unchanged'
+                            });
+                        } else {
+                            result.push({
+                                text: word,
+                                type: 'changed'
+                            });
+                        }
                     } else {
                         result.push({
                             text: word,
@@ -538,16 +546,17 @@ function ChangeLyricsPageContent() {
                         return `<span class="text-red-600">⌧</span>`;
                     } else if (item.type === 'changed') {
                         return `<span class="text-red-600">${item.text}</span>`;
-                    } else if (item.type === 'changedPunctuation') {
-                        return `<span class="underline">${item.text}</span>`;
                     } else {
                         return item.text;
                     }
                 }).join(' ');
 
+                // Build the actual modified text from the result array to ensure it matches what we're displaying
+                const actualModified = result.map(item => item.text).join(' ');
+
                 return {
                     ...line,
-                    modified: normalizedNewText,
+                    modified: actualModified,
                     markedText,
                     wordChanges
                 };
