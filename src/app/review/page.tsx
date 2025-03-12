@@ -66,58 +66,56 @@ function OrderReviewPageContent() {
         },
     ]);
     const lyrics = useMemo(() => {
-        return lyricsData
-            .map(line => {
-                const countedPositions = new Set<number>();
-                const filteredChanges = line.wordChanges.filter(change => {
-                    if (!change.hasChanged || countedPositions.has(change.originalIndex)) return false;
-                    const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                    const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                    const isPunctuationChangeOnly =
-                        originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
-                        originalWithoutPunctuation.length > 0;
-                    if (isPunctuationChangeOnly) return false;
+        return lyricsData.map(line => {
+            const countedPositions = new Set<number>();
+            const filteredChanges = line.wordChanges.filter(change => {
+                if (!change.hasChanged) return false;
+                const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                const isPunctuationChangeOnly =
+                    originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
+                    originalWithoutPunctuation.length > 0;
+                if (isPunctuationChangeOnly) return false;
+                if (change.originalWord) {
+                    if (countedPositions.has(change.originalIndex)) return false;
                     countedPositions.add(change.originalIndex);
-                    return true;
-                });
-
-                return {
-                    ...line,
-                    wordChanges: filteredChanges,
-                };
-            })
-            .filter(line => line.wordChanges.length > 0);
+                }
+                return true;
+            });
+            return { ...line, wordChanges: filteredChanges };
+        }).filter(line => line.wordChanges.length > 0);
     }, [lyricsData]);
 
     const wordChangedCount = useMemo(() => {
         return lyrics.reduce((total, line) => {
             if (line.modified === line.original) return total;
-
             let changedWordCount = 0;
             const countedPositions = new Set<number>();
-
             line.wordChanges.forEach(change => {
-                if (!change.hasChanged || countedPositions.has(change.originalIndex)) return;
-
-                // Remove punctuation from words
+                if (!change.hasChanged) return;
                 const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
                 const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-
-                // Check if it's only a punctuation change
                 const isPunctuationChangeOnly =
                     originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
                     originalWithoutPunctuation.length > 0;
-
-                if (!isPunctuationChangeOnly) {
-                    changedWordCount++;
-                    countedPositions.add(change.originalIndex);
+                if (isPunctuationChangeOnly) return;
+                if (change.originalWord && change.newWord) {
+                    if (!countedPositions.has(change.originalIndex)) {
+                        changedWordCount++;
+                        countedPositions.add(change.originalIndex);
+                    }
+                } else if (change.originalWord && !change.newWord) {
+                    if (!countedPositions.has(change.originalIndex)) {
+                        changedWordCount++;
+                        countedPositions.add(change.originalIndex);
+                    }
+                } else if (!change.originalWord && change.newWord) {
+                    changedWordCount += change.newWord.split(/\s+/).length;
                 }
             });
-
             return total + changedWordCount;
         }, 0);
     }, [lyrics]);
-
 
     // Load data from localStorage
     useEffect(() => {
@@ -267,7 +265,6 @@ function OrderReviewPageContent() {
                 toast.error("Server error", { description: errorText || errorMessage });
                 throw new Error(errorMessage);
             }
-
         } catch (error) {
             console.error("Checkout error:", error);
             toast.error("Checkout failed", {

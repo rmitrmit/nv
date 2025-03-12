@@ -261,25 +261,37 @@ function ChangeLyricsPageContent() {
 
     // Calculate total word changes
     function countChangedWords(line: LyricLine): number {
-        // Count only actual changes - additions, deletions, and substitutions
         let changedWordCount = 0;
 
-        // Track which positions we've already counted to avoid double counting
-        const countedPositions = new Set<number>();
+        // Track positions to avoid double-counting substitutions and deletions
+        const countedOriginalPositions = new Set<number>();
 
         // Process each change in the line
         line.wordChanges.forEach(change => {
-            // Skip if we've already counted this position or if it's not a change
-            if (!change.hasChanged || countedPositions.has(change.originalIndex)) {
-                return;
-            }
+            if (!change.hasChanged) return; // Skip unchanged words
 
-            changedWordCount++;
-            countedPositions.add(change.originalIndex);
+            if (change.originalWord && change.newWord) {
+                // Substitution: Count only if this original position hasn't been counted
+                if (!countedOriginalPositions.has(change.originalIndex)) {
+                    changedWordCount++;
+                    countedOriginalPositions.add(change.originalIndex);
+                }
+            } else if (change.originalWord && !change.newWord) {
+                // Deletion: Always count, using originalIndex to track
+                if (!countedOriginalPositions.has(change.originalIndex)) {
+                    changedWordCount++;
+                    countedOriginalPositions.add(change.originalIndex);
+                }
+            } else if (!change.originalWord && change.newWord) {
+                // Insertion: Each insertion is a separate change
+                changedWordCount++;
+                // No need to track position for insertions, as each is unique by definition
+            }
         });
 
         return changedWordCount;
     }
+
 
     // Updated totalWordChanges calculation
     const totalWordChanges = useMemo(() => {
@@ -572,7 +584,6 @@ function ChangeLyricsPageContent() {
         });
     }
 
-    // Similarly fix the handleReplaceAll function to match the updated logic
     const handleReplaceAll = () => {
         if (!replaceTerm.trim()) {
             toast.error('Please enter a term to replace');
@@ -581,32 +592,54 @@ function ChangeLyricsPageContent() {
 
         setLyrics(prevLyrics => {
             const updatedLyrics = prevLyrics.map(line => {
-                // Skip if line doesn't contain the search term
                 if (!line.modified.includes(replaceTerm)) {
                     return line;
                 }
 
-                // Create new modified text with replacements
-                const newModified = line.modified.replaceAll(replaceTerm, replaceWith);
+                // Split the line into words
+                const words = line.modified.split(/\b/);
 
-                // Calculate word changes against original text
-                const wordChanges = calculateWordChanges(line.original, newModified);
+                // Process each word to see if it contains the replace term
+                const newMarked = words.map(word => {
+                    // Check if this word contains the replaceTerm (case insensitive)
+                    if (word.match(new RegExp(escapeRegExp(replaceTerm), 'i'))) {
+                        // Replace the matched part while preserving case
+                        const modifiedWord = word.replace(
+                            new RegExp(escapeRegExp(replaceTerm), 'gi'),
+                            match => {
+                                // Determine the case pattern of the matched text
+                                if (match === match.toUpperCase()) {
+                                    return replaceWith.toUpperCase();
+                                } else if (match === match.toLowerCase()) {
+                                    return replaceWith.toLowerCase();
+                                } else if (match[0] === match[0].toUpperCase()) {
+                                    return replaceWith.charAt(0).toUpperCase() + replaceWith.slice(1).toLowerCase();
+                                } else {
+                                    return replaceWith;
+                                }
+                            }
+                        );
 
-                // Create HTML marked text directly with replacements highlighted
-                const markedText = newModified.replace(
-                    new RegExp(escapeRegExp(replaceWith), 'g'),
-                    `<span class="text-red-600">${replaceWith}</span>`
-                );
+                        // Highlight the entire word
+                        return `<span class="text-red-600">${modifiedWord}</span>`;
+                    }
+                    return word;
+                }).join('');
+
+                const newModifiedPlain = stripHtmlAndSymbols(newMarked);
+                const wordChanges = calculateWordChanges(line.original, newModifiedPlain);
+
+                // Use the existing handler to process the changes
+                handleLyricChange(line.id, newModifiedPlain);
 
                 return {
                     ...line,
-                    modified: newModified,
-                    markedText,
+                    modified: newModifiedPlain,
+                    markedText: newMarked,
                     wordChanges
                 };
             });
 
-            // Update form values
             setFormValues(prev => ({
                 ...prev,
                 lyrics: updatedLyrics.map(line => line.modified).join('\n')
@@ -907,6 +940,7 @@ function ChangeLyricsPageContent() {
                                                                 </td>
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base">
                                                                     <div
+                                                                        key={line.modified}
                                                                         contentEditable={true}
                                                                         onBlur={(e) => handleLyricChange(line.id, e.currentTarget.textContent || '')}
                                                                         suppressContentEditableWarning={true}
