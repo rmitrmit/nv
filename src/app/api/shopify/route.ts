@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
             lineItems: [{
                 quantity: 1,
                 title: "Change Song Lyrics Service | Nicevois.com",
-                originalUnitPrice: "0.00",//String(price.toFixed(2)), // Standardized format
+                originalUnitPrice: String(price.toFixed(2)), // Standardized format
                 customAttributes: _customAttributes,
                 taxable: false
             }],
