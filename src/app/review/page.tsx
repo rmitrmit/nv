@@ -415,7 +415,7 @@ function OrderReviewPageContent() {
                                     {/* Display Lyrics Summary */}
                                     <div className="space-y-2 my-4">
                                         <div className="p-4 bg-white rounded-lg">
-                                            <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({wordChangedCount} word{wordChangedCount !== 1 ? 's' : ''})</h4>
+                                            <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({wordChangedCount} word{wordChangedCount > 1 ? 's' : ''})</h4>
                                             {lyrics.filter(line => line.modified !== line.original).length > 0 ? (
                                                 <div className="overflow-x-auto">
                                                     <table className="min-w-full border border-gray-200">

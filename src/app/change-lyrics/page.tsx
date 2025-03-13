@@ -894,7 +894,7 @@ function ChangeLyricsPageContent() {
                                                     <span>Additional Changes: <strong>{Math.max(0, totalWordChanges - 1)} × ${ADDITIONAL_COST_PER_CHANGE} = ${Math.max(0, totalWordChanges - 1) * ADDITIONAL_COST_PER_CHANGE}</strong></span> <br />
                                                     <div className="text-base md:text-lg border-t border-white/20 mt-2 pt-2">
                                                         <span>
-                                                            <strong>Total: ${cost}</strong> <span>({totalWordChanges} word{totalWordChanges !== 1 ? 's' : ''})</span>
+                                                            <strong>Total: ${cost}</strong> <span>({totalWordChanges} word{totalWordChanges > 1 ? 's' : ''})</span>
                                                         </span>
                                                     </div>
                                                 </span>
