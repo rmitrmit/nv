@@ -925,7 +925,7 @@ function ChangeLyricsPageContent() {
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium text-sm md:text-base text-muted">
                                                                     {line.id}
                                                                 </td>
-                                                                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base">
+                                                                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base text-gray-900">
                                                                     {line.original}
                                                                 </td>
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
