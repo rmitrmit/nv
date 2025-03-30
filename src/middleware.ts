@@ -1,19 +1,35 @@
 import { NextResponse, NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Get the hostname from the request URL
-  const hostname = request.nextUrl.hostname;
+  // Get the full URL and hostname
+  const url = request.nextUrl;
+  const hostname = url.hostname;
+  const path = url.pathname;
   
   // Your primary domain
   const primaryDomain = 'nicevois.com';
   const wwwDomain = `www.${primaryDomain}`;
   
-  // Debug log
-  console.log(`Middleware running | Hostname: ${hostname} | Path: ${request.nextUrl.pathname}`);
+  // Very detailed logging
+  console.log(`
+    ==== MIDDLEWARE DEBUG ====
+    Full URL: ${url.toString()}
+    Hostname: ${hostname}
+    Path: ${path}
+    Headers Host: ${request.headers.get('host')}
+    ==========================
+  `);
   
-  // Block access if not on the primary domain
-  if (hostname !== primaryDomain && hostname !== wwwDomain) {
-    // Create a proper HTML response
+  // Check if the hostname contains your primary domain
+  const isAllowedDomain = hostname === primaryDomain || 
+                          hostname === wwwDomain || 
+                          hostname.endsWith(`.${primaryDomain}`);
+  
+  // Log the domain check result
+  console.log(`Domain check: ${hostname} -> Allowed: ${isAllowedDomain}`);
+  
+  // Block access if not on an allowed domain
+  if (!isAllowedDomain) {
     const htmlResponse = `
       <!DOCTYPE html>
       <html>
@@ -34,13 +50,13 @@ export function middleware(request: NextRequest) {
         <body>
           <h1>Invalid Origin</h1>
           <p>If you are interested in learning how this Vercel app works, feel free to contact us at info@nicevois.com, we can give you support.</p>
-          <p>Please visit <a href="https://nicevois.com">nicevois.com</a> to access the website.</p>
+          <p>Please visit <a href="https://${primaryDomain}">nicevois.com</a> to access the website.</p>
+          <p><small>Debug info: Requested hostname: ${hostname}</small></p>
         </body>
       </html>
     `;
     
-    // Log the blocked request
-    console.log(`Blocking access | Hostname: ${hostname} | Returning 403`);
+    console.log(`Blocking access to ${hostname} - Not an allowed domain`);
     
     return new Response(htmlResponse, { 
       status: 403,
@@ -51,12 +67,12 @@ export function middleware(request: NextRequest) {
     });
   }
   
-  // Allow the request to proceed if on the primary domain
-  console.log(`Access allowed | Hostname: ${hostname} | Proceeding to app`);
+  // Allow the request to proceed
+  console.log(`Access allowed to ${hostname} - Proceeding to application`);
   return NextResponse.next();
 }
 
 export const config = {
-  // Apply to all routes except assets
+  // Apply middleware to all routes except static assets
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
