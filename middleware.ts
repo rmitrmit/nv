@@ -1,14 +1,24 @@
-// middleware.ts (placed either at the project root or inside src/)
 import { NextResponse, NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const url = request.nextUrl.clone();
-  const approvedDomain = 'nicevois.com'; // Your host domain
-
-  if (url.hostname !== approvedDomain) {
+  const hostname = request.headers.get('host') || '';
+  
+  // List of allowed domains (include both your custom domain and Vercel preview URLs if needed)
+  const allowedDomains = ['nicevois.com', 'www.nicevois.com'];
+  
+  // For debugging - you can check logs in Vercel
+  console.log('Middleware running, hostname:', hostname);
+  
+  // Check if the hostname is in the allowed list
+  if (!allowedDomains.some(domain => hostname.includes(domain))) {
     return new Response(
-      "Invalid Origin. If you are interested in learning how this Vercell app works, feel free to contact us at info@nicevois.com, we can give you supports",
-      { status: 500 }
+      "Invalid Origin. If you are interested in learning how this Vercel app works, feel free to contact us at info@nicevois.com, we can provide support.",
+      { 
+        status: 403,
+        headers: {
+          'Content-Type': 'text/html'
+        }
+      }
     );
   }
   
@@ -16,5 +26,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // This matcher applies the middleware to all routes except static assets and API routes
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/).*)'],
 };
