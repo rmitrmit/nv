@@ -490,7 +490,7 @@ function OrderReviewPageContent() {
                             {/* Total Cost */}
                             <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-left text-white">
                                 <div className="p-4 flex">
-                                    <ShoppingCart className="w-6 h-6 text-white mr-3 ml-1 mt-4" />
+                                    <ShoppingCart className="w-6 h-6 text-white mr-3 ml-1" />
                                     <p className="font-medium text-white md:block">
                                         Total: <span className="font-bold text-xl">US${calculateTotal().toFixed(2)}</span>
                                     </p>
