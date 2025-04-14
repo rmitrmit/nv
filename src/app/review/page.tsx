@@ -150,7 +150,7 @@ function OrderReviewPageContent() {
         // It removes punctuation from the start and end, then converts to lowercase.
         const normalizeWord = (word: string): string => {
             return word
-                .replace(/^[.,!?;:"'\[\]{}\(\)\-—_]+|[.,!?;:"'\[\]{}\(\)\-—_]+$/g, "")
+                .replace(/^[.,!?;:"'\[\]{}\(\)\-—_🗙]+|[.,!?;:"'\[\]{}\(\)\-—_]+$/g, "")
                 .toLowerCase();
         };
 
