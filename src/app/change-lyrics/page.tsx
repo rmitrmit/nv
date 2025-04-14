@@ -509,7 +509,7 @@ function ChangeLyricsPageContent() {
                             {/* Lyrics editor */}
                             {!isLoading && (
                                 <Form.Root className="flex flex-1 flex-col gap-4 pb-6" onSubmit={handleNextStep}>
-                                    <div className="mt-2 overflow-y-auto max-h-[85vh]">
+                                    <div className="mt-2 overflow-y-auto max-h-[50vh]">
                                         <div className="relative w-full overflow-visible">
                                             <table className="caption-bottom text-sm relative h-10 w-full text-clip">
                                                 <thead className="shadow sticky top-0 z-50 h-10 w-full border-b border-b-gray-200 bg-gray-100">
