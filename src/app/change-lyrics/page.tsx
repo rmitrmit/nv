@@ -512,7 +512,7 @@ function ChangeLyricsPageContent() {
                                     <div className="mt-2 overflow-y-auto max-h-[85vh]">
                                         <div className="relative w-full overflow-visible">
                                             <table className="caption-bottom text-sm relative h-10 w-full text-clip">
-                                                <thead className="shadow sticky top-0 z-50 h-10 w-full border-b border-b-gray-200 bg-gray-100">
+                                                <thead className="shadow sticky top-0 z-50 h-10 w-full border-b border-b-gray-200 bg-gray-100" style={{ transform: 'translateZ(0)' }}>
                                                     <tr className="border-b transition-colors data-[state=selected]:bg-muted">
                                                         <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 w-5 text-sm md:text-base">#</th>
                                                         <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-sm md:text-base">Original Lyrics</th>
