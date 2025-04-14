@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
 
         _customAttributes.push({
             key: "* Lyrics Change",
-            value: `\n(Word changes: ${numWordChanged} word${numWordChanged > 1 ? 's' : ''}): "${formattedWordList}"\n${formattedLyricsChanges}`
+            value: `\n(Word changes: ${numWordChanged} word${numWordChanged > 1 ? 's' : ''}) "${formattedWordList}"\n${formattedLyricsChanges}`
         });
         if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
         _customAttributes.push({
