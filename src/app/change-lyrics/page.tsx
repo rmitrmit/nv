@@ -1,8 +1,9 @@
+// src\app\change-lyrics\page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronRight, ListMusic, ArrowRight, Eraser } from 'lucide-react';
+import { ChevronRight, ListMusic, ArrowRight, Eraser, ExternalLink } from 'lucide-react';
 import React from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Form from '@radix-ui/react-form';
@@ -12,220 +13,8 @@ import { Toaster, toast } from 'sonner';
 import { StepIndicator, StepDivider, type StepProps } from '@/components/layouts/StepNavigation';
 import BackButton from '@/components/BackButton';
 import Image from 'next/image';
+import { handleReplaceAll, handleResetLyrics, handleLyricChange, handleResetLine, LyricLine, getDistinctChangedWords, generateLyricsData } from './utils';
 
-// src/app/change-lyrics/page.tsx
-// Type definitions
-interface WordChange {
-    originalWord: string;
-    newWord: string;
-    originalIndex: number;
-    newIndex: number;
-    hasChanged: boolean;
-    isTransformation?: boolean; // Added optional property
-}
-
-type LyricLine = {
-    id: number;
-    original: string;
-    modified: string;
-    markedText?: string;
-    wordChanges: WordChange[];
-};
-
-// Utility functions
-function escapeRegExp(string: string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-function calculateWordChanges(original: string, modified: string): WordChange[] {
-    const normalizeText = (text: string) => {
-        return text.replace(/[\n\r]+/g, ' ')
-            .trim()
-            .replace(/\s+/g, ' ');
-    };
-
-    const normalizedOriginal = normalizeText(original || '');
-    const normalizedModified = normalizeText(modified || '');
-
-    // If texts are identical, return empty array
-    if (normalizedOriginal === normalizedModified) {
-        return [];
-    }
-
-    // Split into words (preserve punctuation by keeping it with words)
-    const originalWords = normalizedOriginal.split(/\s+/).filter(word => word.length > 0);
-    const modifiedWords = normalizedModified.split(/\s+/).filter(word => word.length > 0);
-
-    if (originalWords.length === 0 && modifiedWords.length === 0) {
-        return [];
-    }
-
-    // Compute diff using Myers algorithm approach with a simplified implementation
-    const changes: WordChange[] = [];
-
-    // We'll use dynamic programming to find the longest common subsequence (LCS)
-    // This will help us identify unchanged words
-    const lcs = findLongestCommonSubsequence(originalWords, modifiedWords);
-
-    // Use the LCS to identify changes
-    let origPos = 0;
-    let modPos = 0;
-    let lcsPos = 0;
-
-    while (origPos < originalWords.length || modPos < modifiedWords.length) {
-        // Case 1: Word is unchanged (part of LCS)
-        if (lcsPos < lcs.length &&
-            origPos < originalWords.length &&
-            modPos < modifiedWords.length &&
-            originalWords[origPos] === lcs[lcsPos] &&
-            modifiedWords[modPos] === lcs[lcsPos]) {
-
-            changes.push({
-                originalWord: originalWords[origPos],
-                newWord: modifiedWords[modPos],
-                originalIndex: origPos,
-                newIndex: modPos,
-                hasChanged: false
-            });
-
-            origPos++;
-            modPos++;
-            lcsPos++;
-            continue;
-        }
-
-        if (origPos < originalWords.length && modPos < modifiedWords.length) {
-            const originalWithoutPunctuation = originalWords[origPos].replace(/[.,()[\]{}:;!?-]+/g, '').toLowerCase();
-            const modifiedWithoutPunctuation = modifiedWords[modPos].replace(/[.,()[\]{}:;!?-]+/g, '').toLowerCase();
-
-            // If only punctuation is different, mark as unchanged
-            if (originalWithoutPunctuation === modifiedWithoutPunctuation && originalWithoutPunctuation.length > 0) {
-                changes.push({
-                    originalWord: originalWords[origPos],
-                    newWord: modifiedWords[modPos],
-                    originalIndex: origPos,
-                    newIndex: modPos,
-                    hasChanged: false // Mark as unchanged since only punctuation differs
-                });
-
-                origPos++;
-                modPos++;
-                continue;
-            }
-        }
-
-        // Case 2: Words in both texts, but don't match - likely a replacement
-        if (origPos < originalWords.length && modPos < modifiedWords.length) {
-            // Check if next words match to confirm this is a simple replacement
-            const isSimpleReplacement =
-                (origPos + 1 < originalWords.length &&
-                    modPos + 1 < modifiedWords.length &&
-                    originalWords[origPos + 1] === modifiedWords[modPos + 1]) ||
-                // Or if we're at the end of both sequences
-                (origPos === originalWords.length - 1 && modPos === modifiedWords.length - 1);
-
-            if (isSimpleReplacement) {
-                changes.push({
-                    originalWord: originalWords[origPos],
-                    newWord: modifiedWords[modPos],
-                    originalIndex: origPos,
-                    newIndex: modPos,
-                    hasChanged: true
-                });
-
-                origPos++;
-                modPos++;
-                continue;
-            }
-        }
-
-        // Case 3: Word was deleted from original
-        if (origPos < originalWords.length &&
-            (modPos >= modifiedWords.length ||
-                !modifiedWords.includes(originalWords[origPos]) ||
-                lcsPos < lcs.length && originalWords[origPos] !== lcs[lcsPos])) {
-
-            changes.push({
-                originalWord: originalWords[origPos],
-                newWord: '',
-                originalIndex: origPos,
-                newIndex: modPos,
-                hasChanged: true
-            });
-
-            origPos++;
-            continue;
-        }
-
-        // Case 4: Word was added in modified
-        if (modPos < modifiedWords.length) {
-            changes.push({
-                originalWord: '',
-                newWord: modifiedWords[modPos],
-                originalIndex: origPos > 0 ? origPos - 1 : 0,
-                newIndex: modPos,
-                hasChanged: true
-            });
-
-            modPos++;
-            continue;
-        }
-    }
-
-    return changes;
-}
-
-function findLongestCommonSubsequence(arr1: string[], arr2: string[]): string[] {
-    const dp: number[][] = Array(arr1.length + 1)
-        .fill(null)
-        .map(() => Array(arr2.length + 1).fill(0));
-
-    // Fill the dp table
-    for (let i = 1; i <= arr1.length; i++) {
-        for (let j = 1; j <= arr2.length; j++) {
-            if (arr1[i - 1] === arr2[j - 1]) {
-                dp[i][j] = dp[i - 1][j - 1] + 1;
-            } else {
-                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-            }
-        }
-    }
-
-    // Backtrack to find the sequence
-    const result: string[] = [];
-    let i = arr1.length;
-    let j = arr2.length;
-
-    while (i > 0 && j > 0) {
-        if (arr1[i - 1] === arr2[j - 1]) {
-            result.unshift(arr1[i - 1]);
-            i--;
-            j--;
-        } else if (dp[i - 1][j] > dp[i][j - 1]) {
-            i--;
-        } else {
-            j--;
-        }
-    }
-
-    return result;
-}
-
-
-function generateLyricsData(text: string): LyricLine[] {
-    // Remove leading/trailing newlines and normalize line endings
-    const cleanedText = text.replace(/^[\n\r]+|[\n\r]+$/g, '').replace(/\r\n|\r/g, '\n');
-    const lines = cleanedText
-        .split('\n')
-        .filter(line => line.trim().length > 0)
-        .map((line, index) => ({
-            id: index + 1,
-            text: line.trim(),
-            original: line.trim(),
-            modified: line.trim(),
-            wordChanges: [],
-        }));
-    return lines;
-}
 
 // Create a wrapper component that uses useSearchParams
 function ChangeLyricsPageContent() {
@@ -254,54 +43,24 @@ function ChangeLyricsPageContent() {
         lyrics: '',
     });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [distinctChangedWords, setDistinctChangedWords] = useState<string[]>([]);
 
-    // Constants
-    const BASE_COST = 35;
-    const ADDITIONAL_COST_PER_CHANGE = 5;
-
-    // Calculate total word changes
-    function countChangedWords(line: LyricLine): number {
-        let changedWordCount = 0;
-
-        // Track positions to avoid double-counting substitutions and deletions
-        const countedOriginalPositions = new Set<number>();
-
-        // Process each change in the line
-        line.wordChanges.forEach(change => {
-            if (!change.hasChanged) return; // Skip unchanged words
-
-            if (change.originalWord && change.newWord) {
-                // Substitution: Count only if this original position hasn't been counted
-                if (!countedOriginalPositions.has(change.originalIndex)) {
-                    changedWordCount++;
-                    countedOriginalPositions.add(change.originalIndex);
-                }
-            } else if (change.originalWord && !change.newWord) {
-                // Deletion: Always count, using originalIndex to track
-                if (!countedOriginalPositions.has(change.originalIndex)) {
-                    changedWordCount++;
-                    countedOriginalPositions.add(change.originalIndex);
-                }
-            } else if (!change.originalWord && change.newWord) {
-                // Insertion: Each insertion is a separate change
-                changedWordCount++;
-                // No need to track position for insertions, as each is unique by definition
-            }
-        });
-
-        return changedWordCount;
-    }
-
-
+    const calculateCost = (wordChanges: number): number => {
+        if (wordChanges <= 0) return 0;
+        if (wordChanges <= 3) return 45;
+        if (wordChanges <= 10) return 85;
+        if (wordChanges <= 20) return 125;
+        return 165;
+    };
     // Updated totalWordChanges calculation
     const totalWordChanges = useMemo(() => {
-        return lyrics.reduce((sum, line) => {
-            return sum + countChangedWords(line);
-        }, 0);
+        const dcw: string[] = getDistinctChangedWords(lyrics);
+        setDistinctChangedWords(dcw);
+        return dcw.length;
     }, [lyrics]);
 
     // Calculate cost
-    const [cost, setCost] = useState(BASE_COST);
+    const [cost, setCost] = useState(0);
     useEffect(() => {
         // Only run if song details are not already set (e.g., from URL params)
         if (!songId && !songTitle && !songArtist && !songImage) {
@@ -325,8 +84,7 @@ function ChangeLyricsPageContent() {
 
     // Update cost whenever word changes are modified
     useEffect(() => {
-        const additionalChanges = Math.max(0, totalWordChanges - 1); // First change is free
-        setCost(BASE_COST + additionalChanges * ADDITIONAL_COST_PER_CHANGE);
+        setCost(calculateCost(totalWordChanges));
         setIsError(false);
     }, [totalWordChanges]);
 
@@ -450,216 +208,8 @@ function ChangeLyricsPageContent() {
         }
     }, [isManualEntry]); // Run only on mount
 
-    // Improved stripHtmlAndSymbols function
-    const stripHtmlAndSymbols = (text: string) => {
-        // Create a temporary div to parse HTML
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = text;
 
-        // Get plain text content
-        const plainText = tempDiv.textContent || tempDiv.innerText || '';
 
-        // Remove ⌧ symbols completely and trim excess spaces
-        return plainText.replace(/⌧/g, ' ').replace(/\s{2,}/g, ' ').trim();
-    };
-
-    function handleLyricChange(id: number, newText: string) {
-        setLyrics(prevLyrics => {
-            const updatedLyrics = prevLyrics.map(line => {
-                if (line.id !== id) return line;
-
-                // Clean up the input text
-                const sanitizedNewText = stripHtmlAndSymbols(newText);
-
-                // If there's no content after sanitizing, return the line unchanged
-                if (!sanitizedNewText.trim()) {
-                    return line;
-                }
-
-                // Normalize the text to remove extra whitespace
-                const normalizedNewText = sanitizedNewText.replace(/\s{2,}/g, ' ').trim();
-
-                // Calculate word changes by comparing to original
-                const wordChanges = calculateWordChanges(line.original, normalizedNewText);
-
-                // Split the modified text
-                const modifiedWords = normalizedNewText.split(/\s+/).filter(word => word.length > 0);
-
-                // Create a result array with all the words including original and new
-                const result: Array<{ text: string, type: 'unchanged' | 'changed' | 'deleted' }> = [];
-
-                // First add all modified words with their status
-                modifiedWords.forEach((word, index) => {
-                    // Find if this word exists in the changes
-                    const change = wordChanges.find(c =>
-                        c.newIndex === index && c.newWord === word);
-
-                    if (change && change.hasChanged) {
-                        // Check if this is only a punctuation change
-                        const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                        const newWithoutPunctuation = word.replace(/[.,()[\]{}:;!?-]+/g, '');
-
-                        const isPunctuationChangeOnly =
-                            originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
-                            originalWithoutPunctuation.length > 0;
-
-                        // If it's only a punctuation change, don't mark it as changed at all
-                        if (isPunctuationChangeOnly) {
-                            result.push({
-                                text: change.originalWord || word,
-                                type: 'unchanged'
-                            });
-                        } else {
-                            result.push({
-                                text: word,
-                                type: 'changed'
-                            });
-                        }
-                    } else {
-                        result.push({
-                            text: word,
-                            type: 'unchanged'
-                        });
-                    }
-                });
-
-                // Handle deletions - add a deletion marker for EACH deleted word
-                const deletions = wordChanges.filter(change =>
-                    change.hasChanged && !change.newWord && change.originalWord
-                );
-
-                // Sort deletions by their original position
-                deletions.sort((a, b) => a.newIndex - b.newIndex);
-
-                // Group deletions by their position to handle multiple consecutive deletes
-                const positionMap = new Map<number, number>();
-
-                deletions.forEach(deletion => {
-                    const position = deletion.newIndex;
-                    positionMap.set(position, (positionMap.get(position) || 0) + 1);
-                });
-
-                // Insert deletion markers for each position
-                Array.from(positionMap.entries()).sort((a, b) => a[0] - b[0]).forEach(([position, count]) => {
-                    // Make sure position is valid
-                    const insertPosition = Math.max(0, Math.min(position, result.length));
-
-                    // Add a deletion marker for each deleted word at this position
-                    for (let i = 0; i < count; i++) {
-                        result.splice(insertPosition, 0, {
-                            text: '⌧',
-                            type: 'deleted'
-                        });
-                    }
-                });
-
-                // Build the marked text with proper HTML
-                const markedText = result.map(item => {
-                    if (item.type === 'deleted') {
-                        return `<span class="text-red-600">⌧</span>`;
-                    } else if (item.type === 'changed') {
-                        return `<span class="text-red-600">${item.text}</span>`;
-                    } else {
-                        return item.text;
-                    }
-                }).join(' ');
-
-                // Build the actual modified text from the result array to ensure it matches what we're displaying
-                const actualModified = result.map(item => item.text).join(' ');
-
-                return {
-                    ...line,
-                    modified: actualModified,
-                    markedText,
-                    wordChanges
-                };
-            });
-
-            // Update form values with joined lyrics
-            setFormValues(prev => ({
-                ...prev,
-                lyrics: updatedLyrics.map(line => line.modified).join('\n')
-            }));
-
-            return updatedLyrics;
-        });
-    }
-
-    const handleReplaceAll = () => {
-        if (!replaceTerm.trim()) {
-            toast.error('Please enter a term to replace');
-            return;
-        }
-
-        setLyrics(prevLyrics => {
-            const updatedLyrics = prevLyrics.map(line => {
-                // Skip processing if the exact word isn't in the line
-                // Using word boundary in regex to match whole words only
-                const wholeWordRegex = new RegExp(`\\b${escapeRegExp(replaceTerm)}\\b`, 'i');
-                if (!wholeWordRegex.test(line.modified)) {
-                    return line;
-                }
-
-                // Replace only whole words that match exactly
-                const newMarked = line.modified.replace(
-                    new RegExp(`\\b${escapeRegExp(replaceTerm)}\\b`, 'gi'),
-                    match => {
-                        // Determine the case pattern of the matched text
-                        let replacementText;
-                        if (match === match.toUpperCase()) {
-                            replacementText = replaceWith.toUpperCase();
-                        } else if (match === match.toLowerCase()) {
-                            replacementText = replaceWith.toLowerCase();
-                        } else if (match[0] === match[0].toUpperCase()) {
-                            replacementText = replaceWith.charAt(0).toUpperCase() +
-                                replaceWith.slice(1).toLowerCase();
-                        } else {
-                            replacementText = replaceWith;
-                        }
-                        return `<span class="text-red-600">${replacementText}</span>`;
-                    }
-                );
-
-                const newModifiedPlain = stripHtmlAndSymbols(newMarked);
-                const wordChanges = calculateWordChanges(line.original, newModifiedPlain);
-
-                // Use the existing handler to process the changes
-                handleLyricChange(line.id, newModifiedPlain);
-
-                return {
-                    ...line,
-                    modified: newModifiedPlain,
-                    markedText: newMarked,
-                    wordChanges
-                };
-            });
-
-            setFormValues(prev => ({
-                ...prev,
-                lyrics: updatedLyrics.map(line => line.modified).join('\n')
-            }));
-
-            return updatedLyrics;
-        });
-
-        toast.success(`Replaced all instances of "${replaceTerm}" with "${replaceWith}"`);
-    };
-    const handleResetLyrics = () => {
-        setLyrics(prevLyrics => {
-            const resetLyrics = prevLyrics.map(line => ({
-                ...line,
-                modified: line.original,
-                markedText: line.original,
-                wordChanges: []
-            }));
-            setFormValues(prev => ({
-                ...prev,
-                lyrics: resetLyrics.map(line => line.modified).join('\n')
-            }));
-            return resetLyrics;
-        });
-        toast.success('Lyrics reset to original version');
-    };
     const validateForm = () => {
         const errors: Record<string, string> = {};
         let isValid = true;
@@ -689,13 +239,14 @@ function ChangeLyricsPageContent() {
         return { isValid, errors }; // Return both the validity and the errors object
     };
 
+
     const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
         const hasChanges = lyrics.some((line) =>
             line.wordChanges && line.wordChanges.some(change => change.hasChanged)
         );
         if (!hasChanges) {
-            toast.error('No changes made', {
+            toast.error('Unable to proceed: No changes were made.', {
                 description: 'Please modify at least one lyric before proceeding.',
             });
             return;
@@ -755,6 +306,31 @@ function ChangeLyricsPageContent() {
         { step: 2, label: "Change Lyrics", isActive: currentStep === 2, isComplete: currentStep > 2 },
         { step: 3, label: "Review Order", isActive: currentStep === 3, isComplete: false },
     ];
+    const NavigationBtn = () => (
+        <div className="flex flex-row items-center gap-2 py-0">
+            <BackButton href="/" />
+            {!isError && (
+                <button
+                    onClick={handleNextStep}
+                    disabled={isLoading}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+                    type="button"
+                >
+                    {isLoading ? (
+                        "Processing..."
+                    ) : (
+                        <>
+                            Review Order <span className="font-bold text-lg">${cost}</span>
+                            <ChevronRight className="-mr-1 size-4 md:size-5" />
+                        </>
+                    )}
+
+                </button>
+            )}
+        </div>
+    );
+
+
     return (
         <main className="min-h-0 w-full">
             <div className="w-full min-h-full">
@@ -827,7 +403,6 @@ function ChangeLyricsPageContent() {
                                                 objectFit="cover"
                                                 className="rounded-lg"
                                                 onError={(e) => {
-                                                    // When error occurs, find and remove the parent container
                                                     const container = document.getElementById('song-image-container');
                                                     if (container) {
                                                         container.style.display = 'none';
@@ -853,18 +428,7 @@ function ChangeLyricsPageContent() {
                             )}
 
                             {/* Navigation Buttons */}
-                            <div className="flex flex-row items-center gap-2 py-0">
-                                <BackButton href="/" />
-                                {!isError && (
-                                    < button
-                                        onClick={handleNextStep}
-                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
-                                        type="button"
-                                    >
-                                        Change the Lyrics ${cost} <ChevronRight className="-mr-1 size-4 md:size-5" />
-                                    </button>
-                                )}
-                            </div>
+                            <NavigationBtn />
 
                             <Separator.Root
                                 className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full my-3 md:my-4 bg-primary/10"
@@ -881,24 +445,62 @@ function ChangeLyricsPageContent() {
                             {/* Lyrics cost info */}
                             {!isLoading && (
                                 <div
-                                    className="relative w-full rounded-lg p-4 dark:border-gray-100/5 bg-primary/80 text-white/80"
+                                    className="relative w-full rounded-lg p-5 bg-primary/80 text-white shadow-md"
                                     role="alert"
                                 >
-                                    <div className="flex flex-col gap-2">
-                                        <div className="scroll-m-20 font-roboto font-normal tracking-wide dark:text-white text-inherit text-sm md:text-base md:leading-6">
-                                            <span className="my-1.5 flex flex-row gap-1">
-                                                <ListMusic className="-mt-0.5 mr-1 size-4 md:size-5 md:mt-0.5" />
-                                                <span>
-                                                    <strong>Pricing Summary</strong> <br />
-                                                    <span>First-word Change: <strong>${BASE_COST}</strong></span> <br />
-                                                    <span>Additional Changes: <strong>{Math.max(0, totalWordChanges - 1)} × ${ADDITIONAL_COST_PER_CHANGE} = ${Math.max(0, totalWordChanges - 1) * ADDITIONAL_COST_PER_CHANGE}</strong></span> <br />
-                                                    <div className="text-base md:text-lg border-t border-white/20 mt-2 pt-2">
-                                                        <span>
-                                                            <strong>Total: ${cost}</strong> <span>({totalWordChanges} word{totalWordChanges > 1 ? 's' : ''})</span>
-                                                        </span>
-                                                    </div>
-                                                </span>
-                                            </span>
+                                    <div className="flex flex-col gap-3">
+                                        {/* Header */}
+                                        <div className="flex items-center gap-2 border-b border-white/20 pb-3">
+                                            <ListMusic className="size-5" />
+                                            <h3 className="text-lg font-bold">Pricing Summary</h3>
+                                        </div>
+
+                                        {/* Current Order */}
+                                        <div className="bg-blue-900/40 rounded-md p-3 mb-2">
+                                            <p className="mb-2">
+                                                Total Cost: <span className="text-lg font-bold">${cost}</span>
+                                            </p>
+
+                                            <p>
+                                                Lyrics Changes ({distinctChangedWords.length} word{distinctChangedWords.length > 1 ? 's' : ''})
+                                            </p>
+                                            {distinctChangedWords.length > 0 && (<p className=''>&quot;{
+                                                distinctChangedWords.map((word, index) => (
+                                                    <span key={index} className='inline-block mr-1'>{word} {index != distinctChangedWords.length - 1 ? ', ' : ''}</span>
+                                                ))
+                                            }&quot;</p>)}
+                                        </div>
+
+
+                                        {/* Pricing Tiers */}
+                                        <div>
+                                            <h4 className="font-semibold mb-2">Pricing (based on distinct words, case-insensitive)</h4>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                                                <div className={`flex flex-col p-3  ${totalWordChanges <= 3 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
+                                                    <span className="text-sm text-white/90">1-3 words</span>
+                                                    <span className="font-bold">$45</span>
+                                                </div>
+                                                <div className={`flex flex-col p-3 ${totalWordChanges > 3 && totalWordChanges <= 10 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
+                                                    <span className="text-sm text-white/90">4-10 words</span>
+                                                    <span className="font-bold">$85</span>
+                                                </div>
+                                                <div className={`flex flex-col p-3 ${totalWordChanges > 10 && totalWordChanges <= 20 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
+                                                    <span className="text-sm text-white/90">11-20 words</span>
+                                                    <span className="font-bold">$125</span>
+                                                </div>
+                                                <div className={`flex flex-col p-3  ${totalWordChanges > 20 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
+                                                    <span className="text-sm text-white/90">20+ words</span>
+                                                    <span className="font-bold">$165</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div className="mt-2 text-sm text-white/80">
+                                            <a href="https://nicevois.com/pages/pricing" className="text-blue-200 hover:text-blue-50 w-fit hover:underline text-sm inline-block" target="_blank">
+                                                Learn more about our pricing
+                                                <ExternalLink className="w-3 h-3 ml-1 color-inherit inline" />
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -907,39 +509,60 @@ function ChangeLyricsPageContent() {
                             {/* Lyrics editor */}
                             {!isLoading && (
                                 <Form.Root className="flex flex-1 flex-col gap-4 pb-6" onSubmit={handleNextStep}>
-                                    <div className="mt-2 overflow-y-auto">
-                                        <div className="relative w-full overflow-auto">
-                                            <table className="caption-bottom text-sm relative h-10 w-full text-clip rounded-md">
-                                                <thead className="[&_tr]:border-b sticky top-0 z-50 h-10 w-full rounded-t-md border-b-2 bg-gray-50">
+                                    <div className="mt-2 overflow-y-auto max-h-[85vh]">
+                                        <div className="relative w-full overflow-visible">
+                                            <table className="caption-bottom text-sm relative h-10 w-full text-clip">
+                                                <thead className="shadow sticky top-0 z-50 h-10 w-full border-b border-b-gray-200 bg-gray-100">
                                                     <tr className="border-b transition-colors data-[state=selected]:bg-muted">
                                                         <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 w-5 text-sm md:text-base">#</th>
                                                         <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-sm md:text-base">Original Lyrics</th>
-                                                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 w-10"><ArrowRight className="w-4 text-muted" /></th>
+                                                        <th className="h-12 px-0 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 w-10"><ArrowRight className="w-4 text-muted" /></th>
                                                         <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-sm md:text-base">Modified Lyrics</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="[&_tr:last-child]:border-0 bg-white">
                                                     {lyrics.map((line) => {
                                                         return (
-                                                            <tr key={line.id} className="border-b transition-colors data-[state=selected]:bg-muted">
+                                                            <tr key={line.id} className="border-b transition-colors data-[state=selected]:bg-muted ">
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium text-sm md:text-base text-muted">
                                                                     {line.id}
                                                                 </td>
-                                                                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base text-gray-900">
+                                                                <td className="py-4 px-3 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base text-gray-900">
                                                                     {line.original}
                                                                 </td>
-                                                                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                                                                <td className="px-0 py-4 align-middle [&:has([role=checkbox])]:pr-0">
                                                                     <ArrowRight className="w-4 text-muted" />
                                                                 </td>
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base">
-                                                                    <div
-                                                                        key={line.modified}
-                                                                        contentEditable={true}
-                                                                        onBlur={(e) => handleLyricChange(line.id, e.currentTarget.textContent || '')}
-                                                                        suppressContentEditableWarning={true}
-                                                                        dangerouslySetInnerHTML={{ __html: line.markedText || line.modified }}
-                                                                        className="outline-none p-1 rounded hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
-                                                                    />
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <div
+                                                                            key={line.modified}
+                                                                            contentEditable={true}
+                                                                            onBlur={(e) =>
+                                                                                handleLyricChange(
+                                                                                    line.id,
+                                                                                    e.currentTarget.textContent || '',
+                                                                                    setLyrics,
+                                                                                    setFormValues
+                                                                                )
+                                                                            }
+                                                                            suppressContentEditableWarning={true}
+                                                                            dangerouslySetInnerHTML={{ __html: line.markedText || line.modified }}
+                                                                            className="flex-1 outline-none p-2 rounded ring-1 ring-blue-100 hover:ring-2 focus:ring-2 focus:ring-blue-500/50"
+                                                                        />
+                                                                        {line.wordChanges.some((change) => change.hasChanged) && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() =>
+                                                                                    handleResetLine(line.id, setLyrics, setFormValues)
+                                                                                }
+                                                                                className="text-gray-400 hover:text-gray-600"
+                                                                                title="Clear lyric changes"
+                                                                            >
+                                                                                <Eraser className="w-4 h-4" />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         );
@@ -956,16 +579,17 @@ function ChangeLyricsPageContent() {
                                     {/* Reset Button */}
                                     <button
                                         type="button"
-                                        onClick={handleResetLyrics}
-                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-blue-200 text-blue-900 hover:text-blue-200 hover:bg-blue-900 hover:ring-blue-500/50 focus-visible:ring focus-visible:ring-blue-500/50 active:bg-blue-700 active:ring-0 px-5 rounded-t-none rounded-b-md text-sm md:text-base h-10 md:h-12 w-full -mt-4"
+                                        onClick={() => handleResetLyrics(setLyrics, setFormValues, toast)}
+                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-blue-200 text-blue-900 hover:text-blue-200 hover:bg-blue-900 hover:ring-blue-500/50 focus-visible:ring focus-visible:ring-blue-500/50 active:bg-blue-700 active:ring-0 px-5 rounded-t-none rounded-b-md text-sm md:text-base h-10 md:h-12 w-full -mt-4 shadow"
                                     >
-                                        <Eraser className='w-4 h-4 opacity-85' /> Reset to Original Lyrics
+                                        <Eraser className="w-4 h-4 opacity-85" /> Reset all to original lyrics
                                     </button>
+
 
                                     {/* Replace Section */}
                                     <div className="mt-2 flex flex-col gap-2 w-full">
                                         <label className="flex scroll-m-20 tracking-normal dark:text-white font-semibold text-white text-sm md:text-base">
-                                            Replace Words
+                                            Replace All Words (Case-insensitve)
                                         </label>
                                         <div className="flex flex-col sm:flex-row gap-2 w-full">
                                             <input
@@ -973,18 +597,18 @@ function ChangeLyricsPageContent() {
                                                 value={replaceTerm}
                                                 onChange={(e) => setReplaceTerm(e.target.value)}
                                                 placeholder="Word to replace..."
-                                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
+                                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
                                             />
                                             <input
                                                 type="text"
                                                 value={replaceWith}
                                                 onChange={(e) => setReplaceWith(e.target.value)}
                                                 placeholder="Replace with..."
-                                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
+                                                className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
                                             />
                                             <button
                                                 type="button"
-                                                onClick={handleReplaceAll}
+                                                onClick={() => handleReplaceAll(replaceTerm, replaceWith, setLyrics, setFormValues, toast)}
                                                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md text-sm md:text-base h-10 md:h-12 w-full sm:w-auto"
                                             >
                                                 Replace All
@@ -993,14 +617,14 @@ function ChangeLyricsPageContent() {
                                     </div>
 
                                     {/* Special requests */}
-                                    <Form.Field name="specialRequests" className="mt-2 flex flex-col gap-0.5 last:mb-0 relative flex-1">
+                                    <Form.Field name="specialRequests" className="mt-4 flex flex-col gap-0.5 last:mb-0 relative flex-1">
                                         <label className="flex scroll-m-20 tracking-normal peer-disabled:cursor-not-allowed peer-disabled:text-gray-500 peer-disabled:opacity-50 dark:text-white font-semibold text-white text-sm md:text-base">
                                             Your Requests
                                         </label>
                                         <Form.Control asChild>
                                             <textarea
-                                                className="flex min-h-[80px] w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
-                                                rows={4}
+                                                className="flex min-h-[80px] w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary mt-1"
+                                                rows={6}
                                                 value={specialRequests}
                                                 onChange={(e) => setSpecialRequests(e.target.value)}
                                                 placeholder="Add any special requests here (e.g. special details & pronunciations, etc.) ..."
@@ -1032,6 +656,12 @@ function ChangeLyricsPageContent() {
                                     </div>
                                 </div>
                             )}
+                            <Separator.Root
+                                className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full mt-9 mb-3 md:my-4 bg-primary/10"
+                                orientation="horizontal"
+                            />
+                            {/* Navigation Buttons */}
+                            <NavigationBtn />
                         </Tabs.Content>
                     </Tabs.Root>
                 </section>

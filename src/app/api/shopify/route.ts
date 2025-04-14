@@ -7,7 +7,8 @@ const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 interface CartRequest {
     sessionId: string;
     price: number;
-    wordChanged: number;
+    numWordChanged: number,
+    wordChanged: string[];
     songName?: string;
     artist?: string;
     songImage: string;
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { sessionId, price, wordChanged, songName, artist, songImage, songUrl, deliveryType, lyrics, specialRequests } = body;
+        const { sessionId, price, numWordChanged, wordChanged, songName, artist, songImage, songUrl, deliveryType, lyrics, specialRequests } = body;
         const countWords = (text: string): number => {
             return text ? text.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
         };
@@ -204,10 +205,12 @@ export async function POST(request: NextRequest) {
 
         // Enhanced validation
         if (!sessionId || typeof price !== 'number' || !Number.isFinite(price) || price < 0 ||
-            typeof wordChanged !== 'number' || !Number.isFinite(wordChanged) || wordChanged < 0 ||
+            typeof numWordChanged !== 'number' || !Number.isFinite(numWordChanged) || numWordChanged < 0 ||
             !deliveryType || !['standard', 'rush'].includes(deliveryType) ||
             !Array.isArray(lyrics) || lyrics.length === 0 ||
-            !lyrics.every(line => typeof line.original === 'string' && typeof line.modified === 'string')) {
+            !lyrics.every(line => typeof line.original === 'string' && typeof line.modified === 'string') ||
+            !Array.isArray(wordChanged) || wordChanged.length !== numWordChanged ||
+            !wordChanged.every(word => typeof word === 'string' && word.trim().length > 0)) {
             return NextResponse.json(
                 {
                     success: false,
@@ -231,6 +234,7 @@ export async function POST(request: NextRequest) {
             .filter(line => line.modified !== line.original)
             .map(line => formatLine(line.id, line.original, line.modified))
             .join("\n") || "No lyrics changes specified";
+        const formattedWordList = wordChanged.join(", ").replace(/,\s*$/, '');
 
 
         // const customAttributes = [
@@ -280,9 +284,10 @@ export async function POST(request: NextRequest) {
         if (songName) _customAttributes.push({ key: "* Song", value: songName });
         if (artist) _customAttributes.push({ key: "* Artist", value: artist });
         if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
+
         _customAttributes.push({
             key: "* Lyrics Change",
-            value: `\n(Word changes: ${wordChanged} word${wordChanged > 1 ? 's' : ''})\n${formattedLyricsChanges}`
+            value: `\n(Word changes: ${numWordChanged} word${numWordChanged > 1 ? 's' : ''}): "${formattedWordList}"\n${formattedLyricsChanges}`
         });
         if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
         _customAttributes.push({
@@ -295,8 +300,8 @@ export async function POST(request: NextRequest) {
             lineItems: [{
                 quantity: 1,
                 title: "Change Song Lyrics Service | Nicevois.com",
-                // originalUnitPrice: 0,
-                originalUnitPrice: String(price.toFixed(2)), // Standardized format
+                originalUnitPrice: 0,
+                // originalUnitPrice: String(price.toFixed(2)), // Standardized format
                 customAttributes: _customAttributes,
                 taxable: false
             }],

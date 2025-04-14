@@ -3,7 +3,7 @@
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, ShoppingCart } from 'lucide-react';
 import React from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Separator from "@radix-ui/react-separator";
@@ -26,14 +26,68 @@ type ProductOption = {
     type: "delivery" | "addon";
 };
 
-type LyricLine = {
+interface WordChange {
+    originalWord: string;
+    newWord: string;
+    originalIndex: number;
+    newIndex: number;
+    hasChanged: boolean;
+    isTransformation?: boolean;
+    isDeletion?: boolean;
+    isAddition?: boolean;
+    isSubstitution?: boolean;
+    isExplicitDeletion?: boolean;
+}
+
+export type LyricLine = {
     id: number;
     original: string;
     modified: string;
     markedText?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    wordChanges: any[]; // You might want to use a more specific type here
+    wordChanges: WordChange[];
 };
+
+function mergeAdjacentWordChanges(changes: WordChange[]): WordChange[] {
+    if (!changes || changes.length === 0) return changes;
+    const merged: WordChange[] = [];
+    let i = 0;
+    while (i < changes.length) {
+        const current = changes[i];
+        // Only merge adjacent deletion changes if they are not both explicitly generated.
+        if (current.isDeletion && i < changes.length - 1) {
+            const next = changes[i + 1];
+            if (next.isDeletion && next.originalIndex === current.originalIndex + 1) {
+                // If both changes come from an explicit deletion branch, do NOT merge them.
+                if (current.isExplicitDeletion && next.isExplicitDeletion) {
+                    merged.push(current);
+                    i++; // Increment one by one so that explicit deletions remain separate.
+                    continue;
+                }
+                // Otherwise, merge adjacent deletion changes.
+                const mergedChange: WordChange = {
+                    originalWord: current.originalWord + ' ' + next.originalWord,
+                    newWord: current.newWord + ' ' + next.newWord,
+                    originalIndex: current.originalIndex,
+                    newIndex: current.newIndex,
+                    hasChanged: true,
+                    isDeletion: true,
+                    isAddition: false,
+                    isSubstitution: false,
+                };
+                merged.push(mergedChange);
+                i += 2; // Skip the next item that was merged.
+                continue;
+            }
+        }
+        merged.push(current);
+        i++;
+    }
+    return merged;
+}
+
+function containsCJK(text: string): boolean {
+    return /[\u3000-\u303F\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(text);
+}
 
 function OrderReviewPageContent() {
     const router = useRouter();
@@ -65,57 +119,73 @@ function OrderReviewPageContent() {
             type: "delivery",
         },
     ]);
+
+    // Memoize processed lyrics from lyricsData.
     const lyrics = useMemo(() => {
-        return lyricsData.map(line => {
-            const countedPositions = new Set<number>();
-            const filteredChanges = line.wordChanges.filter(change => {
-                if (!change.hasChanged) return false;
-                const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                const isPunctuationChangeOnly =
-                    originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
-                    originalWithoutPunctuation.length > 0;
-                if (isPunctuationChangeOnly) return false;
-                if (change.originalWord) {
-                    if (countedPositions.has(change.originalIndex)) return false;
-                    countedPositions.add(change.originalIndex);
-                }
-                return true;
-            });
-            return { ...line, wordChanges: filteredChanges };
-        }).filter(line => line.wordChanges.length > 0);
+        return lyricsData
+            .map(line => {
+                const countedPositions = new Set<number>();
+                const filteredChanges = line.wordChanges.filter(change => {
+                    if (!change.hasChanged) return false;
+                    const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                    const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
+                    const isPunctuationChangeOnly =
+                        originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
+                        originalWithoutPunctuation.length > 0;
+                    if (isPunctuationChangeOnly) return false;
+                    if (change.originalWord) {
+                        if (countedPositions.has(change.originalIndex)) return false;
+                        countedPositions.add(change.originalIndex);
+                    }
+                    return true;
+                });
+                return { ...line, wordChanges: filteredChanges };
+            })
+            .filter(line => line.wordChanges.length > 0);
     }, [lyricsData]);
 
-    const wordChangedCount = useMemo(() => {
-        return lyrics.reduce((total, line) => {
-            if (line.modified === line.original) return total;
-            let changedWordCount = 0;
-            const countedPositions = new Set<number>();
-            line.wordChanges.forEach(change => {
-                if (!change.hasChanged) return;
-                const originalWithoutPunctuation = (change.originalWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                const newWithoutPunctuation = (change.newWord || '').replace(/[.,()[\]{}:;!?-]+/g, '');
-                const isPunctuationChangeOnly =
-                    originalWithoutPunctuation.toLowerCase() === newWithoutPunctuation.toLowerCase() &&
-                    originalWithoutPunctuation.length > 0;
-                if (isPunctuationChangeOnly) return;
-                if (change.originalWord && change.newWord) {
-                    if (!countedPositions.has(change.originalIndex)) {
-                        changedWordCount++;
-                        countedPositions.add(change.originalIndex);
+    // Compute distinct changed words
+    const distinctChangedWords = useMemo(() => {
+        // Helper function to normalize a word:
+        // It removes punctuation from the start and end, then converts to lowercase.
+        const normalizeWord = (word: string): string => {
+            return word
+                .replace(/^[.,!?;:"'\[\]{}\(\)\-—_]+|[.,!?;:"'\[\]{}\(\)\-—_]+$/g, "")
+                .toLowerCase();
+        };
+
+        const uniqueWords = new Set<string>();
+
+        // Loop over every lyric line.
+        lyrics.forEach(line => {
+            // Depending on the text content, if it's not CJK, merge adjacent changes.
+            const changes = containsCJK(line.original)
+                ? line.wordChanges
+                : mergeAdjacentWordChanges(line.wordChanges);
+
+            changes.forEach(change => {
+                if (change.hasChanged) {
+                    // For deletion changes, we add "🗙" before the normalized original word.
+                    if (change.isDeletion) {
+                        const originalNorm = normalizeWord(change.originalWord);
+                        if (originalNorm) uniqueWords.add(`🗙${originalNorm}`);
                     }
-                } else if (change.originalWord && !change.newWord) {
-                    if (!countedPositions.has(change.originalIndex)) {
-                        changedWordCount++;
-                        countedPositions.add(change.originalIndex);
+                    // For substitution and addition, use the modified (new) word.
+                    else if (change.isSubstitution || change.isAddition) {
+                        const newNorm = normalizeWord(change.newWord);
+                        if (newNorm) uniqueWords.add(newNorm);
                     }
-                } else if (!change.originalWord && change.newWord) {
-                    changedWordCount += change.newWord.split(/\s+/).length;
+                    // Fallback: if no specific flag is set, default to using the modified (new) word.
+                    else {
+                        const fallbackNorm = normalizeWord(change.newWord);
+                        if (fallbackNorm) uniqueWords.add(fallbackNorm);
+                    }
                 }
             });
-            return total + changedWordCount;
-        }, 0);
-    }, [lyrics]);
+        });
+
+        return Array.from(uniqueWords);
+    }, [lyrics]); // Dependencies: Only depend on lyrics
 
     // Load data from localStorage
     useEffect(() => {
@@ -169,7 +239,7 @@ function OrderReviewPageContent() {
     const handleCheckout = async () => {
         setIsLoading(true);
 
-        if (wordChangedCount < 1) {
+        if (distinctChangedWords.length < 1) {
             toast.error("No significant changes detected", {
                 description: "You must modify at least one word to proceed with checkout.",
             });
@@ -225,7 +295,8 @@ function OrderReviewPageContent() {
             const orderData = {
                 sessionId,
                 price: calculateTotal(),
-                wordChanged: wordChangedCount,
+                numWordChanged: distinctChangedWords.length,
+                wordChanged: distinctChangedWords,
                 songName: songTitle || undefined,
                 artist: songArtist || undefined,
                 songImage: songImage || undefined,
@@ -394,6 +465,15 @@ function OrderReviewPageContent() {
                                 className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full my-3 md:my-4 bg-primary/10"
                                 orientation="horizontal"
                             />
+                            {/* Total Cost */}
+                            <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-left text-white">
+                                <div className="p-4 flex">
+                                    <ShoppingCart className="w-6 h-6 text-white mt-[0.5] mr-3 ml-1" />
+                                    <p className="font-medium text-white md:block">
+                                        Total: <span className="font-bold text-xl">${calculateTotal().toFixed(2)}</span>
+                                    </p>
+                                </div>
+                            </div>
 
                             {isLoading && (
                                 <div className="flex items-center justify-center py-8">
@@ -414,16 +494,21 @@ function OrderReviewPageContent() {
                                 <div className="flex flex-col space-y-2 overflow-y-auto md:h-auto lg:h-full">
                                     {/* Display Lyrics Summary */}
                                     <div className="space-y-2 my-4">
-                                        <div className="p-4 bg-white rounded-lg">
-                                            <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({wordChangedCount} word{wordChangedCount > 1 ? 's' : ''})</h4>
+                                        <div className="py-8 px-4 bg-white">
+                                            <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({distinctChangedWords.length} word{distinctChangedWords.length > 1 ? 's' : ''})</h4>
+                                            {distinctChangedWords.length > 0 && (<p>&quot;{
+                                                distinctChangedWords.map((word, index) => (
+                                                    <span key={index} className='inline-block mr-1'>{word} {index != distinctChangedWords.length - 1 ? ', ' : ''}</span>
+                                                ))
+                                            }&quot;</p>)}
                                             {lyrics.filter(line => line.modified !== line.original).length > 0 ? (
-                                                <div className="overflow-x-auto">
+                                                <div className="overflow-x-auto mt-2">
                                                     <table className="min-w-full border border-gray-200">
                                                         <thead className="bg-gray-100">
                                                             <tr>
-                                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border-b">Line #</th>
-                                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border-b">Original</th>
-                                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border-b">Modified</th>
+                                                                <th className="px-4 py-2 text-left text-sm font-medium text-primary border-b">Line #</th>
+                                                                <th className="px-4 py-2 text-left text-sm font-medium text-primary border-b">Original</th>
+                                                                <th className="px-4 py-2 text-left text-sm font-medium text-primary border-b">Modified</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -502,14 +587,6 @@ function OrderReviewPageContent() {
 
                                                 </label>
                                             ))}
-                                    </div>
-
-                                    <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border-t bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-right">
-                                        <div className="flex items-center justify-between p-4">
-                                            <span className="font-medium text-white md:block">
-                                                Total: <span className="font-bold">${calculateTotal().toFixed(2)}</span>
-                                            </span>
-                                        </div>
                                     </div>
                                 </div>
                             )}
