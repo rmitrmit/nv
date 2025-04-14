@@ -656,12 +656,16 @@ function ChangeLyricsPageContent() {
                                     </div>
                                 </div>
                             )}
-                            <Separator.Root
-                                className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full mt-9 mb-3 md:my-4 bg-primary/10"
-                                orientation="horizontal"
-                            />
                             {/* Navigation Buttons */}
-                            <NavigationBtn />
+                            {!isLoading && (
+                                <>
+                                    <Separator.Root
+                                        className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full mt-9 mb-3 md:my-4 bg-primary/10"
+                                        orientation="horizontal"
+                                    />
+                                    <NavigationBtn />
+                                </>
+                            )}
                         </Tabs.Content>
                     </Tabs.Root>
                 </section>
