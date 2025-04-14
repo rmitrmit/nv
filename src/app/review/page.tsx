@@ -490,9 +490,9 @@ function OrderReviewPageContent() {
                             {/* Total Cost */}
                             <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-left text-white">
                                 <div className="p-4 flex">
-                                    <ShoppingCart className="w-6 h-6 text-white mt-[0.5] mr-3 ml-1" />
+                                    <ShoppingCart className="w-6 h-6 text-white mr-3 ml-1 mt-4" />
                                     <p className="font-medium text-white md:block">
-                                        Total: <span className="font-bold text-xl">${calculateTotal().toFixed(2)}</span>
+                                        Total: <span className="font-bold text-xl">US${calculateTotal().toFixed(2)}</span>
                                     </p>
                                 </div>
                             </div>
@@ -516,7 +516,7 @@ function OrderReviewPageContent() {
                                 <div className="flex flex-col space-y-2 overflow-y-auto md:h-auto lg:h-full">
                                     {/* Display Lyrics Summary */}
                                     <div className="space-y-2 my-4">
-                                        <div className="py-8 px-4 bg-white">
+                                        <div className="pb-8 pt-4 px-4 bg-white">
                                             <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({distinctChangedWords.length} word{distinctChangedWords.length > 1 ? 's' : ''})</h4>
                                             {distinctChangedWords.length > 0 && (<p>&quot;{
                                                 distinctChangedWords.map((word, index) => (
@@ -599,10 +599,10 @@ function OrderReviewPageContent() {
                                                     </div>
                                                     {product.originalPrice !== undefined && (
                                                         <div className="flex gap-2 md:items-center">
-                                                            <span className="font-bold text-gray-700">+${product.price.toFixed(2)}</span>
+                                                            <span className="font-bold text-gray-700">+US${product.price.toFixed(2)}</span>
 
                                                             <span className="font-bold text-gray-400 line-through">
-                                                                ${product.originalPrice?.toFixed(2) ?? "0.00"}
+                                                                US${product.originalPrice?.toFixed(2) ?? "0.00"}
                                                             </span>
                                                         </div>
                                                     )}

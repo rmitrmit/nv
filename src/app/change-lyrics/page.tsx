@@ -320,7 +320,7 @@ function ChangeLyricsPageContent() {
                         "Processing..."
                     ) : (
                         <>
-                            Review Order <span className="font-bold text-lg">${cost}</span>
+                            Review Order <span className="font-bold text-lg">US${cost}</span>
                             <ChevronRight className="-mr-1 size-4 md:size-5" />
                         </>
                     )}
@@ -458,7 +458,7 @@ function ChangeLyricsPageContent() {
                                         {/* Current Order */}
                                         <div className="bg-blue-900/40 rounded-md p-3 mb-2">
                                             <p className="mb-2">
-                                                Total Cost: <span className="text-lg font-bold">${cost}</span>
+                                                Total Cost: <span className="text-lg font-bold">US${cost}</span>
                                             </p>
 
                                             <p>
@@ -478,19 +478,19 @@ function ChangeLyricsPageContent() {
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
                                                 <div className={`flex flex-col p-3  ${totalWordChanges <= 3 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
                                                     <span className="text-sm text-white/90">1-3 words</span>
-                                                    <span className="font-bold">$45</span>
+                                                    <span className="font-bold">US$45</span>
                                                 </div>
                                                 <div className={`flex flex-col p-3 ${totalWordChanges > 3 && totalWordChanges <= 10 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
                                                     <span className="text-sm text-white/90">4-10 words</span>
-                                                    <span className="font-bold">$85</span>
+                                                    <span className="font-bold">US$85</span>
                                                 </div>
                                                 <div className={`flex flex-col p-3 ${totalWordChanges > 10 && totalWordChanges <= 20 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
                                                     <span className="text-sm text-white/90">11-20 words</span>
-                                                    <span className="font-bold">$125</span>
+                                                    <span className="font-bold">US$125</span>
                                                 </div>
                                                 <div className={`flex flex-col p-3  ${totalWordChanges > 20 ? 'bg-blue-800' : 'bg-blue-900/60  opacity-90'}`}>
                                                     <span className="text-sm text-white/90">20+ words</span>
-                                                    <span className="font-bold">$165</span>
+                                                    <span className="font-bold">US$165</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -509,7 +509,7 @@ function ChangeLyricsPageContent() {
                             {/* Lyrics editor */}
                             {!isLoading && (
                                 <Form.Root className="flex flex-1 flex-col gap-4 pb-6" onSubmit={handleNextStep}>
-                                    <div className="mt-2 overflow-y-auto max-h-[85vh]">
+                                    <div className="mt-2 overflow-y-auto max-h-[50vh]">
                                         <div className="relative w-full overflow-visible">
                                             <table className="caption-bottom text-sm relative h-10 w-full text-clip">
                                                 <thead className="shadow sticky top-0 z-50 h-10 w-full border-b border-b-gray-200 bg-gray-100" style={{ transform: 'translateZ(0)' }}>
