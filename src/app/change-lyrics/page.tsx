@@ -14,7 +14,7 @@ import { StepIndicator, StepDivider, type StepProps } from '@/components/layouts
 import BackButton from '@/components/BackButton';
 import Image from 'next/image';
 import { handleReplaceAll, handleResetLyrics, handleLyricChange, handleResetLine, LyricLine, getDistinctChangedWords, generateLyricsData } from './utils';
-
+import { ExternalLyricsResponse } from '../api/lyrics/route';
 
 // Create a wrapper component that uses useSearchParams
 function ChangeLyricsPageContent() {
@@ -126,14 +126,24 @@ function ChangeLyricsPageContent() {
         const fetchLyricsByTitleAndArtist = async (songTitle: string, songArtist: string) => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`/api/lyrics?track_name=${encodeURIComponent(songTitle)}&artist_name=${encodeURIComponent(songArtist)}`);
+                const slug = songUrl
+                    ? songUrl.replace("https://genius.com/", "").replace(/\/$/, "")
+                    : "";
+
+                const params = new URLSearchParams({
+                    title: songTitle,
+                    artist: songArtist,
+                    slug: slug,
+                });
+
+                const response = await fetch(`/api/lyrics?${params.toString()}`);
 
                 if (!response.ok) {
                     toast.error('We encountered a techinical issue. Please read below for what to do.');
                     setIsError(true);
                     throw new Error(`API error: ${response.status} ${response.status}`);
                 }
-                const data = await response.json();
+                const data: ExternalLyricsResponse = await response.json();
 
                 if (!isMounted) return;
 
@@ -176,7 +186,7 @@ function ChangeLyricsPageContent() {
         return () => {
             isMounted = false;
         };
-    }, [songTitle, songArtist, songId, isManualEntry]);
+    }, [songTitle, songArtist, songId, songUrl, isManualEntry]);
 
     // State Restoration for Non-Manual Entry
     useEffect(() => {
@@ -549,7 +559,7 @@ function ChangeLyricsPageContent() {
                                                                     <div className="flex items-center justify-between gap-2">
                                                                         {isNonEditable ? (
                                                                             <div className="flex-1 p-2 rounded ring-1 ring-gray-100 bg-gray-100 text-gray-500 cursor-not-allowed">
-                                                                                {line.original}
+                                                                                {line.original.replace(/&amp;/g, '&')}
                                                                             </div>
                                                                         ) : (
                                                                             <div

@@ -1,40 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-interface ExternalLyricsResponse {
-    artist_name: string;
-    track_name: string;
-    track_id: number;
-    search_engine: string;
-    artwork_url: string;
+export interface ExternalLyricsResponse {
+    title: string;
+    artist: string;
+    slug: string;
     lyrics: string;
 }
 
 export async function GET(req: NextRequest) {
-    const trackName = req.nextUrl.searchParams.get('track_name');
-    const artistName = req.nextUrl.searchParams.get('artist_name');
+    const title = req.nextUrl.searchParams.get('title');
+    const artist = req.nextUrl.searchParams.get('artist');
+    const slug = req.nextUrl.searchParams.get('slug');
     const corsHeaders = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Methods': 'GET',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
-    if (!trackName || !artistName) {
-        console.error('Missing required parameter: track_name or artist_name');
+    if (!title || !artist || !slug) {
         return new NextResponse(
-            JSON.stringify({ error: 'The "track_name" and "artist_name" parameters are required' }),
+            JSON.stringify({
+                error: "These parameters are required: ['title', 'artist', 'slug']",
+            }),
             { status: 400, headers: corsHeaders }
         );
     }
 
     try {
-        const encodedTrack = encodeURIComponent(trackName);
-        const encodedArtist = encodeURIComponent(artistName);
-        const apiUrl = `${process.env.LYRICS_API_ADDRESS}/genius/lyrics?title=${encodedTrack}&artist=${encodedArtist}`;
+        const encodedTitle = encodeURIComponent(title);
+        const encodedArtist = encodeURIComponent(artist);
+        const encodedSlug = encodeURIComponent(slug);
+        const externalApiUrl = `${process.env.LYRICS_API_ADDRESS}/genius/lyrics?title=${encodedTitle}&artist=${encodedArtist}&slug=${encodedSlug}`;
 
-        console.log('Fetching from URL:', apiUrl);
+        console.log('Fetching from URL:', externalApiUrl);
 
         // Add headers that mimic a browser request
-        const response = await fetch(apiUrl, {
+        const response = await fetch(externalApiUrl, {
             method: 'GET',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -66,11 +67,10 @@ export async function GET(req: NextRequest) {
 
         return new NextResponse(
             JSON.stringify({
-                id: data.track_id,
-                title: data.track_name,
-                artist: data.artist_name,
+                title: data.title,
+                artist: data.artist,
+                slug: data.slug,
                 lyrics: data.lyrics,
-                artwork_url: data.artwork_url,
             }),
             { status: 200, headers: corsHeaders }
         );
