@@ -700,9 +700,26 @@ export function handleReplaceAll(
 
     let totalReplacements = 0; // Accumulates all replacement instances
 
+    // Helper function to check if a line should be ignored
+    const shouldIgnoreLine = (text: string): boolean => {
+        const trimmed = text.trim();
+        if (!trimmed) return false;
+        
+        const startsWithBracket = trimmed.startsWith('<') || trimmed.startsWith('(') || trimmed.startsWith('[');
+        const endsWithBracket = trimmed.endsWith('>') || trimmed.endsWith(')') || trimmed.endsWith(']');
+        
+        return startsWithBracket && endsWithBracket;
+    };
+
     setLyrics(prevLyrics => {
         const updatedLyrics = prevLyrics.map(line => {
             const currentText = line.modified;
+            
+            // Skip replacement if line matches ignore pattern
+            if (shouldIgnoreLine(currentText)) {
+                return line; // Return unchanged line
+            }
+            
             let newModified = currentText;
             let replacedCountInLine = 0; // Count replacements for this line
 

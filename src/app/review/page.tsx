@@ -3,7 +3,7 @@
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronRight, ShoppingCart } from 'lucide-react';
+import { Check, ChevronRight, PackageCheck, ShoppingCart } from 'lucide-react';
 import React from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Separator from "@radix-ui/react-separator";
@@ -436,7 +436,7 @@ function OrderReviewPageContent() {
 
                             {/* Song Image, Title, and Artist Display */}
                             {(songImage || songTitle || songArtist) && (
-                                <div className="p-4 bg-primary/10 rounded-lg mb-4 flex flex-col sm:flex-row items-center gap-4">
+                                <div className="p-4 bg-primary/10 rounded-lg mb-4 flex flex-col sm:flex-row items-center gap-4" style={{ marginBottom: '0.75rem' }}>
                                     {songImage && (
                                         <div className="relative w-40 h-40 flex-shrink-0" id="song-image-container">
                                             <Image
@@ -470,25 +470,28 @@ function OrderReviewPageContent() {
                                     </div>
                                 </div>
                             )}
-
-                            <div className="flex flex-row items-center gap-2 py-0">
-                                <BackButton href="/change-lyrics" />
-                                <button
-                                    onClick={handleCheckout}
-                                    disabled={isLoading}
-                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
-                                    type="button"
-                                >
-                                    {isLoading ? "Processing..." : "Checkout"} <ChevronRight className="-mr-1 size-4 md:size-5" />
-                                </button>
-                            </div>
+                            {/* Navigation Buttons */}
+                            {!isLoading && (
+                                <div className="flex flex-row items-center gap-2 py-0">
+                                    <BackButton href="/change-lyrics" />
+                                    <button
+                                        onClick={handleCheckout}
+                                        disabled={isLoading}
+                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+                                        type="button"
+                                    >
+                                        <PackageCheck /> {isLoading ? "Processing..." : "Checkout"} <ChevronRight className="-mr-1 size-4 md:size-5" />
+                                    </button>
+                                </div>
+                            )}
 
                             <Separator.Root
                                 className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full my-3 md:my-4 bg-primary/10"
                                 orientation="horizontal"
+                                style={{ marginBottom: '0.25rem' }}
                             />
                             {/* Total Cost */}
-                            <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-left text-white">
+                            <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-left text-white py-1">
                                 <div className="p-4 flex">
                                     <ShoppingCart className="w-6 h-6 text-white mr-3 ml-1" />
                                     <p className="font-medium text-white md:block">
@@ -515,7 +518,7 @@ function OrderReviewPageContent() {
                             {!isLoading && (
                                 <div className="flex flex-col space-y-2 overflow-y-auto md:h-auto lg:h-full">
                                     {/* Display Lyrics Summary */}
-                                    <div className="space-y-2 my-4">
+                                    <div className="space-y-2 my-3">
                                         <div className="pb-8 pt-4 px-4 bg-white">
                                             <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({distinctChangedWords.length} word{distinctChangedWords.length > 1 ? 's' : ''})</h4>
                                             {distinctChangedWords.length > 0 && (<p>&quot;{
@@ -567,7 +570,7 @@ function OrderReviewPageContent() {
 
 
                                     {/* Delivery Options */}
-                                    <div className="space-y-2" style={{ marginBottom: '1.5rem', marginTop: '1.5rem' }}>
+                                    <div className="space-y-2" style={{ marginBottom: '1.25rem', marginTop: '0.75rem' }}>
                                         {productOptions
                                             .filter((product) => product.type === "delivery")
                                             .map((product) => (
@@ -610,6 +613,24 @@ function OrderReviewPageContent() {
                                                 </label>
                                             ))}
                                     </div>
+                                </div>
+                            )}
+                            <Separator.Root
+                                className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full bg-primary/10 my-3 md:my-4"
+                                orientation="horizontal"
+                            />
+                            {/* Navigation Buttons */}
+                            {!isLoading && (
+                                <div className="flex flex-row items-center gap-2 py-0">
+                                    <BackButton href="/change-lyrics" />
+                                    <button
+                                        onClick={handleCheckout}
+                                        disabled={isLoading}
+                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+                                        type="button"
+                                    >
+                                        <PackageCheck /> {isLoading ? "Processing..." : "Checkout"} <ChevronRight className="-mr-1 size-4 md:size-5" />
+                                    </button>
                                 </div>
                             )}
                         </Tabs.Content>

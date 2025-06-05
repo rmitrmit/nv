@@ -93,10 +93,10 @@ const SearchResults = ({ results, isLoading, onSelect }: SearchResultsProps) => 
     }
 
     return (
-        <div className="relative overflow-hidden flex-1 w-full rounded-md border bg-white max-h-[calc(100vh-20rem)] md:max-h-[calc(100vh-22rem)] overflow-y-auto">
+        <div className="relative overflow-hidden flex-1 w-full rounded-md border bg-white max-h-[calc(100vh-20rem)] md:max-h-[calc(100vh-22rem)] overflow-y-auto -mt-3 shadow-xl">
             <div className="min-w-full">
                 {results.map((song: Song) => (
-                    <div key={song.id} className="relative cursor-pointer p-3 md:p-4 hover:bg-gray-200/20 transition-colors border-2 border-spacing-0 -mb-1" onClick={() => onSelect(song)}>
+                    <div key={song.id} className="relative cursor-pointer p-3 md:p-4 hover:bg-gray-200/20 transition-colors outline-1 border-spacing-0 -mb-1 border-b-2" onClick={() => onSelect(song)}>
                         <div className="flex items-center gap-3">
                             <Image src={song.image} alt={song.title} width={48} height={48} className="w-12 h-12 rounded-md" />
                             <div className="pr-12">
@@ -234,10 +234,14 @@ const SearchPanel = () => {
                 />
             ) : selectedSong ? (
                 <div className="p-4 bg-primary/10 rounded-lg flex gap-3 items-center">
-                    <div className="relative w-24 h-24 md:w-32 md:h-32">
+                    <div className="relative w-40 h-40 md:w-32 md:h-32">
                         <Image
                             src={selectedSong.image}
                             alt={selectedSong.title}
+                            // layout="fill"
+                            // objectFit="cover"
+                            // width="240"
+                            // height="240"
                             fill
                             className="rounded-md object-cover"
                             priority // Loads the image faster
@@ -248,12 +252,15 @@ const SearchPanel = () => {
                             {selectedSong.title}
                         </h3>
                         <p className="text-sm text-white/80 font-roboto tracking-wide">
-                            {selectedSong.artist}
+                            by {selectedSong.artist}
                         </p>
                     </div>
                 </div>
             ) : (
                 <EmptyState />
+            )}
+            {isLoading && (
+                <div className="py-24"></div>
             )}
 
             {selectedSong && (

@@ -22,6 +22,11 @@ const nextConfig = {
                 hostname: 'assets.genius.com',
                 pathname: '/**',
             },
+            {
+                protocol: 'https',
+                hostname: 'img.youtube.com',
+                pathname: '/**', // or '/vi/**' if you only want the /vi/… thumbnails
+            },
         ],
     },
 };

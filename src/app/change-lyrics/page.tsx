@@ -94,7 +94,7 @@ function ChangeLyricsPageContent() {
 
         try {
             const storedLyrics = localStorage.getItem('manualEntryLyrics');
-            console.log('Retrieved manualEntryLyrics:', storedLyrics);
+            // console.log('Retrieved manualEntryLyrics:', storedLyrics);
             if (storedLyrics) {
                 setOriginalLyricsText(storedLyrics);
                 setLyrics(generateLyricsData(storedLyrics));
@@ -126,12 +126,12 @@ function ChangeLyricsPageContent() {
         const fetchLyricsByTitleAndArtist = async (songTitle: string, songArtist: string) => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`/api/genius/lyrics?track_name=${encodeURIComponent(songTitle)}&artist_name=${encodeURIComponent(songArtist)}`);
+                const response = await fetch(`/api/lyrics?track_name=${encodeURIComponent(songTitle)}&artist_name=${encodeURIComponent(songArtist)}`);
 
                 if (!response.ok) {
-                    toast.error('We had problem fetching the lyrics. Please go "back" and select "manual entry" tab.');
+                    toast.error('We encountered a techinical issue. Please read below for what to do.');
                     setIsError(true);
-                    throw new Error(`API error: ${response.status}`);
+                    throw new Error(`API error: ${response.status} ${response.status}`);
                 }
                 const data = await response.json();
 
@@ -141,7 +141,7 @@ function ChangeLyricsPageContent() {
                     setOriginalLyricsText(data.lyrics);
                     setLyrics(generateLyricsData(data.lyrics));
                     setFormValues(prev => ({ ...prev, lyrics: data.lyrics }));
-                    console.log('API lyrics fetched and set successfully');
+                    // console.log('API lyrics fetched and set successfully');
                 } else {
                     setFormErrors(prev => ({ ...prev, general: 'Lyrics not found' }));
                     console.error('Lyrics not found from API');
@@ -164,7 +164,7 @@ function ChangeLyricsPageContent() {
         // Check if there are saved lyrics in localStorage
         const savedLyrics = localStorage.getItem('lyrics');
         if (savedLyrics) {
-            console.log('Skipping API fetch; using saved lyrics from localStorage');
+            // console.log('Skipping API fetch; using saved lyrics from localStorage');
             return; // Exit early if saved lyrics exist
         }
 
@@ -189,7 +189,7 @@ function ChangeLyricsPageContent() {
             const savedLyrics = localStorage.getItem('lyrics');
             if (savedLyrics) {
                 setLyrics(JSON.parse(savedLyrics));
-                console.log('Restored saved lyrics:', JSON.parse(savedLyrics));
+                // console.log('Restored saved lyrics:', JSON.parse(savedLyrics));
             }
 
             const savedRequests = localStorage.getItem('specialRequests');
@@ -201,7 +201,7 @@ function ChangeLyricsPageContent() {
             const savedCost = localStorage.getItem('cost');
             if (savedCost) setCost(parseFloat(savedCost));
 
-            console.log('State restoration completed');
+            // console.log('State restoration completed');
         } catch (error) {
             console.error('Error restoring state from localStorage:', error);
             toast.error('Failed to restore previous changes');
@@ -346,7 +346,7 @@ function ChangeLyricsPageContent() {
                         },
                     }}
                 />
-                <section className="mx-auto w-full max-w-[1280px] flex flex-col space-y-4 px-6 sm:px-12 md:px-16 lg:px-32 xl:px-40 2xl:px-52">
+                <section className="mx-auto w-full max-w-[1280px] flex flex-col space-y-2 px-6 sm:px-12 md:px-16 lg:px-32 xl:px-40 2xl:px-52">
                     {/* Header/Nav */}
                     <nav className="w-full bg-transparent px-4 pb-4">
                         <div className="container mx-auto flex justify-end">
@@ -393,14 +393,18 @@ function ChangeLyricsPageContent() {
 
                             {/* Song Image, Title, and Artist Display */}
                             {(songImage || songTitle || songArtist) && (
-                                <div className="p-4 bg-primary/10 rounded-lg mb-4 flex flex-col sm:flex-row items-center gap-4">
+                                <div className="p-4 bg-primary/10 rounded-lg flex flex-col sm:flex-row items-center gap-4" style={{ marginBottom: '0.75rem' }}>
                                     {songImage && (
                                         <div className="relative w-40 h-40 flex-shrink-0" id="song-image-container">
                                             <Image
                                                 src={decodeURIComponent(songImage)}
                                                 alt={songTitle || "Song Image"}
-                                                layout="fill"
-                                                objectFit="cover"
+                                                // layout="fill"
+                                                // objectFit="cover"
+                                                // width="240"
+                                                // height="240"
+                                                fill
+                                                priority
                                                 className="rounded-lg"
                                                 onError={(e) => {
                                                     const container = document.getElementById('song-image-container');
@@ -411,8 +415,9 @@ function ChangeLyricsPageContent() {
                                                 }}
                                             />
                                         </div>
-                                    )}
-                                    <div className="flex flex-col items-center sm:items-start">
+                                    )
+                                    }
+                                    < div className="flex flex-col items-center sm:items-start">
                                         {songTitle && (
                                             <h4 className="text-white font-azbuka text-lg">
                                                 {songTitle}
@@ -433,12 +438,17 @@ function ChangeLyricsPageContent() {
                             <Separator.Root
                                 className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full my-3 md:my-4 bg-primary/10"
                                 orientation="horizontal"
+                                style={{ marginBottom: '0.25rem' }}
                             />
 
                             {/* Loading state */}
                             {isLoading && (
-                                <div className="flex items-center justify-center py-8">
+                                <div className="flex flex-col items-center justify-center py-8">
                                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                                    <div className='bg-white p-6 rounded-md text-gray-700 mt-4'>
+                                        <p>Loading the lyrics ...</p>
+                                        <p>Please allow up to 10 seconds so we can fetch data from our server.</p>
+                                    </div>
                                 </div>
                             )}
 
@@ -508,7 +518,7 @@ function ChangeLyricsPageContent() {
 
                             {/* Lyrics editor */}
                             {!isLoading && (
-                                <Form.Root className="flex flex-1 flex-col gap-4 pb-6" onSubmit={handleNextStep}>
+                                <Form.Root className="flex flex-1 flex-col gap-4 pt-2 pb-4" onSubmit={handleNextStep}>
                                     <div className="mt-2 overflow-y-auto max-h-[85vh]">
                                         <div className="relative w-full overflow-visible">
                                             <table className="caption-bottom text-sm relative h-10 w-full text-clip">
@@ -522,6 +532,8 @@ function ChangeLyricsPageContent() {
                                                 </thead>
                                                 <tbody className="[&_tr:last-child]:border-0 bg-white">
                                                     {lyrics.map((line) => {
+                                                        const isNonEditable = line.original.startsWith('[') && line.original.endsWith(']');
+
                                                         return (
                                                             <tr key={line.id} className="border-b transition-colors data-[state=selected]:bg-muted ">
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium text-sm md:text-base text-muted">
@@ -535,22 +547,28 @@ function ChangeLyricsPageContent() {
                                                                 </td>
                                                                 <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base">
                                                                     <div className="flex items-center justify-between gap-2">
-                                                                        <div
-                                                                            key={line.modified}
-                                                                            contentEditable={true}
-                                                                            onBlur={(e) =>
-                                                                                handleLyricChange(
-                                                                                    line.id,
-                                                                                    e.currentTarget.textContent || '',
-                                                                                    setLyrics,
-                                                                                    setFormValues
-                                                                                )
-                                                                            }
-                                                                            suppressContentEditableWarning={true}
-                                                                            dangerouslySetInnerHTML={{ __html: line.markedText || line.modified }}
-                                                                            className="flex-1 outline-none p-2 rounded ring-1 ring-blue-100 hover:ring-2 focus:ring-2 focus:ring-blue-500/50"
-                                                                        />
-                                                                        {line.wordChanges.some((change) => change.hasChanged) && (
+                                                                        {isNonEditable ? (
+                                                                            <div className="flex-1 p-2 rounded ring-1 ring-gray-100 bg-gray-100 text-gray-500 cursor-not-allowed">
+                                                                                {line.original}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div
+                                                                                key={line.modified}
+                                                                                contentEditable={true}
+                                                                                onBlur={(e) =>
+                                                                                    handleLyricChange(
+                                                                                        line.id,
+                                                                                        e.currentTarget.textContent || '',
+                                                                                        setLyrics,
+                                                                                        setFormValues
+                                                                                    )
+                                                                                }
+                                                                                suppressContentEditableWarning={true}
+                                                                                dangerouslySetInnerHTML={{ __html: line.markedText || line.modified }}
+                                                                                className="flex-1 outline-none p-2 rounded ring-1 ring-blue-100 hover:ring-2 focus:ring-2 focus:ring-blue-500/50"
+                                                                            />
+                                                                        )}
+                                                                        {!isNonEditable && line.wordChanges.some((change) => change.hasChanged) && (
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() =>
@@ -574,6 +592,22 @@ function ChangeLyricsPageContent() {
                                                     {formErrors.lyrics}
                                                 </Form.Message>
                                             )}
+                                            {Array.isArray(lyrics) && lyrics.length === 0 && (
+                                                <div className=" text-red-500 bg-white p-6 text-lg">
+                                                    <h2 className="text-2xl font-bold">404 Not Found</h2>
+                                                    <p className="mt-3">* 😔 Oops, we could not find the lyrics for this song in our database. </p>
+                                                    <p className="mt-3"> * Please insert your lyrics manually using the &quot;Manual Entry&quot; tab on the previous page.</p>
+                                                    <p className='mt-3'>
+                                                        * We sincerely apologize for this inconvenience and we would appreciate if you could report this to us{' '}
+                                                        <a href="https://nicevois.com/pages/contact" className="hover:underline text-blue-600" target="_blank">
+                                                            here
+                                                            <ExternalLink className="w-3 h-3 ml-1 color-inherit inline" />
+                                                        </a>
+                                                        . Thank you!
+                                                    </p>
+                                                </div>
+                                            )}
+
                                         </div>
                                     </div>
                                     {/* Reset Button */}
@@ -589,7 +623,7 @@ function ChangeLyricsPageContent() {
                                     {/* Replace Section */}
                                     <div className="mt-2 flex flex-col gap-2 w-full">
                                         <label className="flex scroll-m-20 tracking-normal dark:text-white font-semibold text-white text-sm md:text-base">
-                                            Replace All Words (Case-insensitve)
+                                            Replace All Words (Case-insensitive)
                                         </label>
                                         <div className="flex flex-col sm:flex-row gap-2 w-full">
                                             <input
@@ -617,7 +651,7 @@ function ChangeLyricsPageContent() {
                                     </div>
 
                                     {/* Special requests */}
-                                    <Form.Field name="specialRequests" className="mt-4 flex flex-col gap-0.5 last:mb-0 relative flex-1">
+                                    <Form.Field name="specialRequests" className="mt-1 flex flex-col gap-0.5 last:mb-0 relative flex-1">
                                         <label className="flex scroll-m-20 tracking-normal peer-disabled:cursor-not-allowed peer-disabled:text-gray-500 peer-disabled:opacity-50 dark:text-white font-semibold text-white text-sm md:text-base">
                                             Your Requests
                                         </label>
@@ -641,7 +675,7 @@ function ChangeLyricsPageContent() {
 
                             {/* Tip Box */}
                             {!isLoading && (
-                                <div className="mt-4 md:mt-6 flex flex-col sm:flex-row items-start gap-3 rounded-lg bg-[#4B5EAA]/20 p-3 md:p-4 shadow-md border-blue-500 border">
+                                <div className="flex flex-col sm:flex-row items-start gap-3 rounded-lg bg-[#4B5EAA]/20 p-3 md:p-4 shadow-md border-blue-500 border" style={{ marginTop: '0rem', marginBottom: '0.5rem' }}>
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4B5EAA] text-lg flex-shrink-0">
                                         💡
                                     </div>
@@ -658,13 +692,13 @@ function ChangeLyricsPageContent() {
                             )}
                             {/* Navigation Buttons */}
                             {!isLoading && (
-                                <>
+                                <div className=''>
                                     <Separator.Root
-                                        className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full mt-9 mb-3 md:my-4 bg-primary/10"
+                                        className="shrink-0 dark:bg-gray-100/5 h-[1.5px] w-full my-3 md:my-4 bg-primary/10"
                                         orientation="horizontal"
                                     />
                                     <NavigationBtn />
-                                </>
+                                </div>
                             )}
                         </Tabs.Content>
                     </Tabs.Root>
