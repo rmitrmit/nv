@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef, useCallback } from "react";
 
-const SHOP_ORIGINS = String(process.env.SHOP_ORIGINS).split(',');
-
-if (SHOP_ORIGINS.length < 1) {
+if (process.env.NEXT_PUBLIC_SHOP_ORIGINS == undefined) {
     throw new Error("Missing SHOP_ORIGINS environment variable");
 }
+
+const SHOP_ORIGINS = String(process.env.NEXT_PUBLIC_SHOP_ORIGINS).split(',');
 
 export default function IframeHeightManager() {
     const lastHeightRef = useRef<number>(0);
