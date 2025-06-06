@@ -5,7 +5,7 @@
 :root {
     --background: theme('colors.blue.600');
     --foreground: theme('colors.blue.600');
-    text: theme('colors.white');
+    --text: theme('colors.white');
 }
 
 /* Optional: Light mode

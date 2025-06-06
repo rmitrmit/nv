@@ -94,7 +94,7 @@ function ChangeLyricsPageContent() {
 
         try {
             const storedLyrics = localStorage.getItem('manualEntryLyrics');
-            // console.log('Retrieved manualEntryLyrics:', storedLyrics);
+            // // console.log('Retrieved manualEntryLyrics:', storedLyrics);
             if (storedLyrics) {
                 setOriginalLyricsText(storedLyrics);
                 setLyrics(generateLyricsData(storedLyrics));

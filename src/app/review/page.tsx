@@ -89,6 +89,36 @@ function containsCJK(text: string): boolean {
     return /[\u3000-\u303F\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(text);
 }
 
+interface CheckoutButtonProps {
+    handleCheckout: () => void;
+    isLoading: boolean;
+    calculateTotal: () => number;
+}
+
+const CheckoutButton: React.FC<CheckoutButtonProps> = ({ handleCheckout, isLoading, calculateTotal }) => {
+    return (
+        <button
+            onClick={handleCheckout}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+            type="button"
+        >
+            <PackageCheck />
+            {isLoading ? (
+                "Processing..."
+            ) : (
+                <>
+                    Checkout{" "}
+                    <span className="font-bold text-lg">
+                        US${calculateTotal().toFixed(2)}
+                    </span>
+                </>
+            )}
+            <ChevronRight className="-mr-1 size-4 md:size-5" />
+        </button>
+    );
+};
+
 function OrderReviewPageContent() {
     const router = useRouter();
     const [songTitle, setSongTitle] = useState("");
@@ -474,20 +504,7 @@ function OrderReviewPageContent() {
                             {!isLoading && (
                                 <div className="flex flex-row items-center gap-2 py-0">
                                     <BackButton href="/change-lyrics" />
-                                    <button
-                                        onClick={handleCheckout}
-                                        disabled={isLoading}
-                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
-                                        type="button"
-                                    >
-                                        <PackageCheck /> 
-                                        {isLoading ? "Processing..." : (
-                                            <>
-                                                Checkout <span className="font-bold text-lg">US${calculateTotal().toFixed(2)}</span>
-                                            </>
-                                        )}
-                                        <ChevronRight className="-mr-1 size-4 md:size-5" />
-                                    </button>
+                                    <CheckoutButton handleCheckout={handleCheckout} isLoading={isLoading} calculateTotal={calculateTotal} />
                                 </div>
                             )}
 
@@ -497,7 +514,7 @@ function OrderReviewPageContent() {
                                 style={{ marginBottom: '0.25rem' }}
                             />
                             {/* Total Cost */}
-                            <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-left text-white py-1">
+                            <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-right text-white py-1">
                                 <div className="p-4 flex">
                                     <ShoppingCart className="w-6 h-6 text-white mr-3 ml-1" />
                                     <p className="font-medium text-white md:block">
@@ -629,20 +646,7 @@ function OrderReviewPageContent() {
                             {!isLoading && (
                                 <div className="flex flex-row items-center gap-2 py-0">
                                     <BackButton href="/change-lyrics" />
-                                    <button
-                                        onClick={handleCheckout}
-                                        disabled={isLoading}
-                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
-                                        type="button"
-                                    >
-                                        <PackageCheck /> 
-                                        {isLoading ? "Processing..." : (
-                                            <>
-                                                Checkout <span className="font-bold text-lg">US${calculateTotal().toFixed(2)}</span>
-                                            </>
-                                        )}
-                                        <ChevronRight className="-mr-1 size-4 md:size-5" />
-                                    </button>
+                                    <CheckoutButton handleCheckout={handleCheckout} isLoading={isLoading} calculateTotal={calculateTotal} />
                                 </div>
                             )}
                         </Tabs.Content>
