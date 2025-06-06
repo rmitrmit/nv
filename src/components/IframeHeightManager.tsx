@@ -88,11 +88,12 @@ export default function IframeHeightManager() {
         const delay = isReduction ? 0 : 8;
 
         setTimeout(() => {
-            SHOP_ORIGINS.forEach((origin) => {
+            SHOP_ORIGINS.forEach((origin, index) => {
                 try {
                     window.parent.postMessage(message, origin);
                 } catch (error) {
                     // Silent fail for better performance
+                    console.error(`Unable to send postMessage to domain #${index}: ${JSON.stringify(error)}`)
                 }
             });
         }, delay);
