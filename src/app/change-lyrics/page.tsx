@@ -47,7 +47,7 @@ function ChangeLyricsPageContent() {
 
     const calculateCost = (wordChanges: number): number => {
         if (wordChanges <= 0) return 0;
-        if (wordChanges <= 3) return 2;
+        if (wordChanges <= 3) return 45;
         if (wordChanges <= 10) return 85;
         if (wordChanges <= 20) return 125;
         return 165;
