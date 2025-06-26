@@ -447,7 +447,7 @@ function ChangeLyricsPageContent() {
             if (songImage) localStorage.setItem('songImage', songImage);
             if (songUrl) localStorage.setItem('songUrl', songUrl);
 
-            setCurrentStep(currentStep + 1);
+            // setCurrentStep(currentStep + 1);
             router.push(path);
 
         } catch (err) {
