@@ -106,8 +106,8 @@ function ChangeLyricsPageContent() {
         if (isStateRestored) return; // Prevent multiple restorations
 
         try {
-            const savedStep = localStorage.getItem('currentStep');
-            if (savedStep) setCurrentStep(parseInt(savedStep, 10));
+            // const savedStep = localStorage.getItem('currentStep');
+            // if (savedStep) setCurrentStep(parseInt(savedStep, 10));
 
             const savedLyrics = localStorage.getItem('lyrics');
             const savedFormValues = localStorage.getItem('formValues');
@@ -436,7 +436,7 @@ function ChangeLyricsPageContent() {
             // Your existing localStorage and navigation logic...
             localStorage.setItem('lyrics', JSON.stringify(lyrics));
             localStorage.setItem('cost', cost.toString());
-            localStorage.setItem('currentStep', (currentStep + 1).toString());
+            // localStorage.setItem('currentStep', (currentStep + 1).toString());
             localStorage.setItem('specialRequests', specialRequests);
             localStorage.setItem('formValues', JSON.stringify(formValues));
             localStorage.setItem('deliveryOption', 'Standard Delivery');
