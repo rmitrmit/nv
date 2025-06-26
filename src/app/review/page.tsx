@@ -1,4 +1,4 @@
-// src\app\review\page.tsx
+// src/app/review/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
@@ -7,13 +7,11 @@ import { Check, ChevronRight, PackageCheck, ShoppingCart } from 'lucide-react';
 import React from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Separator from "@radix-ui/react-separator";
-import SignInToSaveButton from "@/components/SignInToSaveButton";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import { StepIndicator, StepDivider, type StepProps } from "@/components/layouts/StepNavigation";
 import BackButton from "@/components/BackButton";
 import Image from "next/image";
-
-// src/app/review/page.tsx
+import { getDistinctChangedWords } from '../change-lyrics/utils'; // Import getDistinctChangedWords
 
 // Type definitions
 type ProductOption = {
@@ -47,48 +45,6 @@ export type LyricLine = {
     wordChanges: WordChange[];
 };
 
-function mergeAdjacentWordChanges(changes: WordChange[]): WordChange[] {
-    if (!changes || changes.length === 0) return changes;
-    const merged: WordChange[] = [];
-    let i = 0;
-    while (i < changes.length) {
-        const current = changes[i];
-        // Only merge adjacent deletion changes if they are not both explicitly generated.
-        if (current.isDeletion && i < changes.length - 1) {
-            const next = changes[i + 1];
-            if (next.isDeletion && next.originalIndex === current.originalIndex + 1) {
-                // If both changes come from an explicit deletion branch, do NOT merge them.
-                if (current.isExplicitDeletion && next.isExplicitDeletion) {
-                    merged.push(current);
-                    i++; // Increment one by one so that explicit deletions remain separate.
-                    continue;
-                }
-                // Otherwise, merge adjacent deletion changes.
-                const mergedChange: WordChange = {
-                    originalWord: current.originalWord + ' ' + next.originalWord,
-                    newWord: current.newWord + ' ' + next.newWord,
-                    originalIndex: current.originalIndex,
-                    newIndex: current.newIndex,
-                    hasChanged: true,
-                    isDeletion: true,
-                    isAddition: false,
-                    isSubstitution: false,
-                };
-                merged.push(mergedChange);
-                i += 2; // Skip the next item that was merged.
-                continue;
-            }
-        }
-        merged.push(current);
-        i++;
-    }
-    return merged;
-}
-
-function containsCJK(text: string): boolean {
-    return /[\u3000-\u303F\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(text);
-}
-
 interface CheckoutButtonProps {
     handleCheckout: () => void;
     isLoading: boolean;
@@ -100,7 +56,7 @@ const CheckoutButton: React.FC<CheckoutButtonProps> = ({ handleCheckout, isLoadi
         <button
             onClick={handleCheckout}
             disabled={isLoading}
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12 shadow"
             type="button"
         >
             <PackageCheck />
@@ -150,7 +106,7 @@ function OrderReviewPageContent() {
         },
     ]);
 
-    // Memoize processed lyrics from lyricsData.
+    // Memoize processed lyrics from lyricsData
     const lyrics = useMemo(() => {
         return lyricsData
             .map(line => {
@@ -174,70 +130,10 @@ function OrderReviewPageContent() {
             .filter(line => line.wordChanges.length > 0);
     }, [lyricsData]);
 
-    // Compute distinct changed words
+    // Compute distinct changed words using getDistinctChangedWords from utils.ts
     const distinctChangedWords = useMemo(() => {
-        // Helper function to normalize a word:
-        // It removes punctuation (and the deletion marker "🗙") from the start and end, then converts to lowercase.
-        const normalizeWord = (word: string): string => {
-            return word
-                .replace(/^[.,!?;:"'\[\]{}\(\)\-—_🗙]+|[.,!?;:"'\[\]{}\(\)\-—_]+$/g, "")
-                .toLowerCase();
-        };
-
-        // Two sets: one for words added (or substituted) and one for words that only appear in deletion.
-        const additions = new Set<string>();
-        const deletions = new Set<string>();
-
-        lyrics.forEach(line => {
-            // Use merged changes for non-CJK; otherwise, use as-is.
-            const changes = containsCJK(line.original)
-                ? line.wordChanges
-                : mergeAdjacentWordChanges(line.wordChanges);
-
-            changes.forEach(change => {
-                if (change.hasChanged) {
-                    if (change.isSubstitution || change.isAddition) {
-                        // Record addition/substitution words in a normalized way (without any prefix).
-                        const newNorm = normalizeWord(change.newWord);
-                        if (newNorm) {
-                            additions.add(newNorm);
-                        }
-                    } else if (change.isDeletion) {
-                        // Record deletions as normalized words.
-                        const originalNorm = normalizeWord(change.originalWord);
-                        if (originalNorm) {
-                            deletions.add(originalNorm);
-                        }
-                    } else {
-                        // Default fallback: treat as addition.
-                        const fallbackNorm = normalizeWord(change.newWord);
-                        if (fallbackNorm) {
-                            additions.add(fallbackNorm);
-                        }
-                    }
-                }
-            });
-        });
-
-        // For deletions, if a word is found in the additions set,
-        // that means the same word was added elsewhere, so we do not want to use the deletion marker.
-        // We only want the "added" version (i.e. without the 🗙 prefix).
-        const finalDeletions = new Set<string>();
-        deletions.forEach(word => {
-            if (!additions.has(word)) {
-                finalDeletions.add(word);
-            }
-        });
-
-        // Combine the results: words from additions, and for words that appear only as deletion,
-        // prepend the "🗙" marker.
-        const result = new Set<string>([...additions]);
-        finalDeletions.forEach(word => {
-            result.add(`🗙${word}`);
-        });
-
-        return Array.from(result);
-    }, [lyrics]); // Dependencies: Only depend on lyrics
+        return getDistinctChangedWords(lyricsData);
+    }, [lyricsData]);
 
     // Load data from localStorage
     useEffect(() => {
@@ -251,7 +147,7 @@ function OrderReviewPageContent() {
             const storedCost = parseFloat(localStorage.getItem("cost") || "0");
             const storedSpecialRequests = localStorage.getItem("specialRequests") || "";
 
-            setLyricsData(storedLyrics); // ✅ Fixed the incorrect function name
+            setLyricsData(storedLyrics);
             setCost(storedCost);
             setSpecialRequests(storedSpecialRequests);
         } catch (error) {
@@ -259,7 +155,6 @@ function OrderReviewPageContent() {
             toast.error("Failed to load order data");
         }
     }, []);
-
 
     const toggleProductSelection = (productId: string) => {
         setProductOptions((prevOptions) => {
@@ -398,7 +293,6 @@ function OrderReviewPageContent() {
         }
     };
 
-
     const steps: StepProps[] = [
         { step: 1, label: "Choose A Song", isActive: currentStep === 1, isComplete: currentStep > 1 },
         { step: 2, label: "Change Lyrics", isActive: currentStep === 2, isComplete: currentStep > 2 },
@@ -408,23 +302,11 @@ function OrderReviewPageContent() {
     return (
         <main className="min-h-0 w-full">
             <div className="w-full min-h-full">
-                <Toaster
-                    position="top-center"
-                    toastOptions={{
-                        style: {
-                            marginTop: "7rem",
-                            padding: "16px",
-                            color: "oklch(0.396 0.141 25.723)",
-                            backgroundColor: "oklch(0.971 0.013 17.38)",
-                            fontSize: "1.15rem",
-                        },
-                    }}
-                />
                 <section className="mx-auto w-full max-w-[1280px] flex flex-col space-y-4 px-6 sm:px-12 md:px-16 lg:px-32 xl:px-40 2xl:px-52">
                     <nav className="w-full bg-transparent px-4 pb-4">
-                        <div className="container mx-auto flex justify-end">
-                            <SignInToSaveButton />
-                        </div>
+                        {/* <div className="container mx-auto flex justify-end"> */}
+                        {/* <SignInToSaveButton /> */}
+                        {/* </div> */}
                     </nav>
 
                     <Tabs.Root
@@ -513,7 +395,6 @@ function OrderReviewPageContent() {
                                 orientation="horizontal"
                                 style={{ marginBottom: '0.25rem' }}
                             />
-                            {/* Total Cost */}
                             <div className="text-foundation-foreground fixed bottom-0 left-0 right-0 w-full rounded-none border border-blue-300/50 bg-primary md:relative md:rounded-md md:bg-primary/80 mb-8 text-right text-white py-1">
                                 <div className="p-4 flex">
                                     <ShoppingCart className="w-6 h-6 text-white mr-3 ml-1" />
@@ -529,26 +410,15 @@ function OrderReviewPageContent() {
                                 </div>
                             )}
 
-                            {/* {!isLoading && (
-                                <div className="relative w-full rounded-lg p-4 dark:border-gray-100/5 bg-primary/80 text-white/80" role="alert">
-                                    <div className="flex flex-row gap-2 text-sm md:text-base md:items-center">
-                                        <TicketPercent />
-                                        <strong>You can add discount codes at checkout.</strong>
-                                    </div>
-                                </div>
-                            )} */}
-
                             {!isLoading && (
                                 <div className="flex flex-col space-y-2 overflow-y-auto md:h-auto lg:h-full">
                                     {/* Display Lyrics Summary */}
                                     <div className="space-y-2 my-3">
                                         <div className="pb-8 pt-4 px-4 bg-white">
                                             <h4 className="text-lg font-medium text-blue-800">Lyrics Changes ({distinctChangedWords.length} word{distinctChangedWords.length > 1 ? 's' : ''})</h4>
-                                            {distinctChangedWords.length > 0 && (<p>&quot;{
-                                                distinctChangedWords.map((word, index) => (
-                                                    <span key={index} className='inline-block mr-1'>{word} {index != distinctChangedWords.length - 1 ? ', ' : ''}</span>
-                                                ))
-                                            }&quot;</p>)}
+                                            {distinctChangedWords.length > 0 && (
+                                                <p className=''>&quot;{distinctChangedWords.join(', ')}&quot;</p>
+                                            )}
                                             {lyrics.filter(line => line.modified !== line.original).length > 0 ? (
                                                 <div className="overflow-x-auto mt-2">
                                                     <table className="min-w-full border border-gray-200">
@@ -626,16 +496,15 @@ function OrderReviewPageContent() {
                                                     {product.originalPrice !== undefined && (
                                                         <div className="flex gap-2 md:items-center">
                                                             <span className="font-bold text-gray-700">+US${product.price.toFixed(2)}</span>
-
                                                             <span className="font-bold text-gray-400 line-through">
                                                                 US${product.originalPrice?.toFixed(2) ?? "0.00"}
                                                             </span>
                                                         </div>
                                                     )}
-
                                                 </label>
                                             ))}
                                     </div>
+
                                 </div>
                             )}
                             <Separator.Root

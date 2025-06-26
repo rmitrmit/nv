@@ -1,23 +1,23 @@
-// src\app\api\shopify\route.ts
+// src\app\api\shopify\request-sample\route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ShopifyError, DraftOrderResponse, GraphQLError, formatLine } from './utils';
+import { ShopifyError, DraftOrderResponse, GraphQLError, formatLine } from '../utils';
 
 // Shopify credentials (server-side only)
 const SHOPIFY_ADMIN_API_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 
-interface CartRequest {
+interface SampleRequest {
     sessionId: string;
     price: number;
     numWordChanged: number,
     wordChanged: string[];
     songName?: string;
     artist?: string;
-    songImage: string;
+    songImage?: string;
     songUrl?: string;
-    deliveryType: 'standard' | 'rush';
     lyrics: { id: number, original: string; modified: string }[];
     specialRequests?: string;
+    isSample: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     success: false,
-                    error: 'Missing Shopify API credentials or Variant ID',
+                    error: 'Missing Shopify API credentials',
                     userMessage: 'Internal configuration error. Please contact support.'
                 },
                 { status: 500 }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse and validate request body
-        let body: CartRequest;
+        let body: SampleRequest;
         try {
             body = await request.json();
         } catch {
@@ -53,17 +53,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { sessionId, price, numWordChanged, wordChanged, songName, artist, songImage, songUrl, deliveryType, lyrics, specialRequests } = body;
-        const countWords = (text: string): number => {
-            return text ? text.trim().split(/\s+/).filter(word => word.length > 0).length : 0;
-        };
-        const MAX_WORDS = 100;
-        const specialRequestsWordCount = specialRequests ? countWords(specialRequests) : 0;
+        const { sessionId, price, numWordChanged, wordChanged, songName, artist, songImage, songUrl, lyrics, specialRequests } = body;
 
-        // Enhanced validation
+        // Basic validation for required fields
         if (!sessionId || typeof price !== 'number' || !Number.isFinite(price) || price < 0 ||
             typeof numWordChanged !== 'number' || !Number.isFinite(numWordChanged) || numWordChanged < 0 ||
-            !deliveryType || !['standard', 'rush'].includes(deliveryType) ||
             !Array.isArray(lyrics) || lyrics.length === 0 ||
             !lyrics.every(line => typeof line.original === 'string' && typeof line.modified === 'string') ||
             !Array.isArray(wordChanged) || wordChanged.length !== numWordChanged ||
@@ -72,16 +66,7 @@ export async function POST(request: NextRequest) {
                 {
                     success: false,
                     error: 'Invalid request parameters',
-                    userMessage: 'Please provide valid order details'
-                },
-                { status: 400 }
-            );
-        } else if (specialRequests && specialRequestsWordCount > MAX_WORDS) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'Special Request is too long',
-                    userMessage: `Your 'Special Request' is too long. Please go back to "Change Lyrics" and limit it to ${MAX_WORDS} words (currently ${specialRequestsWordCount} words).`
+                    userMessage: 'Please provide valid sample request details'
                 },
                 { status: 400 }
             );
@@ -92,17 +77,6 @@ export async function POST(request: NextRequest) {
             .map(line => formatLine(line.id, line.original, line.modified))
             .join("\n") || "No lyrics changes specified";
         const formattedWordList = wordChanged.join(", ").replace(/,\s*$/, '');
-
-
-        // const customAttributes = [
-        //     { key: 'Order Id', value: sessionId },
-        //     { key: 'Delivery Type', value: deliveryType === 'rush' ? "Rush Delivery (1 day)" : "Standard Delivery (2-7 days)" },
-        //     { key: 'Song Name', value: songName || 'Not specified' },
-        //     { key: 'Artist', value: artist || 'Not specified' },
-        //     { key: 'Song Url', value: songUrl || 'Not specified' },
-        //     { key: 'Special Requests', value: specialRequests || 'Not specified' },
-        //     { key: 'Song Image', value: songImage || 'Not specified' },
-        // ];
 
         const createDraftOrderQuery = `
             mutation draftOrderCreate($input: DraftOrderInput!) {
@@ -134,10 +108,8 @@ export async function POST(request: NextRequest) {
 
         const _customAttributes = [];
         if (sessionId) _customAttributes.push({ key: "* Order ID", value: sessionId });
-        _customAttributes.push({
-            key: "* Priority",
-            value: deliveryType === 'rush' ? "Rush Delivery (1 business day)" : "Normal Delivery (2-7 business days)"
-        });
+        _customAttributes.push({ key: "* Priority", value: "Sample Request (within 2 business days)" });
+
         if (songName) _customAttributes.push({ key: "* Song", value: songName });
         if (artist) _customAttributes.push({ key: "* Artist", value: artist });
         if (songUrl) _customAttributes.push({ key: "* Song URL", value: songUrl });
@@ -146,25 +118,20 @@ export async function POST(request: NextRequest) {
             key: "* Lyrics Change",
             value: `\n(Word changes: ${numWordChanged} word${numWordChanged > 1 ? 's' : ''}) "${formattedWordList}"\n${formattedLyricsChanges}`
         });
+
         if (specialRequests) _customAttributes.push({ key: "* Special Requests", value: `"${specialRequests}"` });
-        _customAttributes.push({
-            key: "* Order Status",
-            value: deliveryType === 'rush' ? "We will update you via your email (1 day)" : "We will update you via your email (2-7 days)"
-        });
+        _customAttributes.push({ key: "* Order Status", value: "We will update you via your email (within 2 business days)" });
         if (songImage) _customAttributes.push({ key: "* Song Image", value: songImage });
 
         const draftOrderInput = {
             lineItems: [{
                 quantity: 1,
-                title: "Change Song Lyrics Service | Nicevois.com",
-                // originalUnitPrice: 0,
-                originalUnitPrice: String(price.toFixed(2)), // Standardized format
+                title: "[Sample Request] Change Song Lyrics Service | Nicevois.com",
+                originalUnitPrice: String(price.toFixed(2)),
                 customAttributes: _customAttributes,
                 taxable: false
             }],
-            // customAttributes,
-            // note: `Lyrics change:\n(${wordChanged} word${wordChanged > 1 ? 's' : ''})\n${formattedLyricsChanges}`,
-            tags: [`${deliveryType}-delivery`, "custom-lyrics"],
+            tags: ["sample-request", "custom-lyrics"],
             shippingLine: {
                 title: "Digital Delivery",
                 price: price.toFixed(2)
@@ -209,7 +176,7 @@ export async function POST(request: NextRequest) {
                     success: false,
                     error: 'GraphQL error',
                     details: errorDetails,
-                    userMessage: 'Failed to create your order. Please try again.'
+                    userMessage: 'Failed to create your sample request. Please try again.'
                 },
                 { status: 400 }
             );
@@ -222,7 +189,7 @@ export async function POST(request: NextRequest) {
                 {
                     success: false,
                     error: 'Invalid Shopify response',
-                    userMessage: 'Order created but response incomplete'
+                    userMessage: 'Sample request created but response incomplete'
                 },
                 { status: 500 }
             );
@@ -238,12 +205,12 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Error in draft order creation:', error instanceof Error ? error.stack : error);
+        console.error('Error in sample request creation:', error instanceof Error ? error.stack : error);
         return NextResponse.json(
             {
                 success: false,
                 error: 'Internal server error',
-                userMessage: 'Something went wrong. Please try again later.'
+                userMessage: 'Something went wrong with your sample request. Please try again later.'
             },
             { status: 500 }
         );

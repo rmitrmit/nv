@@ -11,13 +11,27 @@
 import { diffWords, diffChars } from 'diff';
 import { toast as sonnerToast } from 'sonner'; // Import toast type from sonner
 
+export type CheckoutData = {
+    title: string;
+    artist: string;
+    image?: string; // Add image field
+    url: string;
+    changedWords: string[];
+    modifiedLyrics: string;
+    originalLyrics?: string; // Add original lyrics field
+    specialRequests: string;
+    deliveryPreference: string;
+    totalCost: string;
+    generatedOn: string;
+}
+
 export interface FormValues {
     songUrl: string;
     lyrics: string;
 }
 
 // Add this at the beginning of the file or wherever the interface is defined
-interface WordChange {
+export interface WordChange {
     originalWord: string;
     newWord: string;
     originalIndex: number;
@@ -704,22 +718,22 @@ export function handleReplaceAll(
     const shouldIgnoreLine = (text: string): boolean => {
         const trimmed = text.trim();
         if (!trimmed) return false;
-        
+
         const startsWithBracket = trimmed.startsWith('<') || trimmed.startsWith('(') || trimmed.startsWith('[');
         const endsWithBracket = trimmed.endsWith('>') || trimmed.endsWith(')') || trimmed.endsWith(']');
-        
+
         return startsWithBracket && endsWithBracket;
     };
 
     setLyrics(prevLyrics => {
         const updatedLyrics = prevLyrics.map(line => {
             const currentText = line.modified;
-            
+
             // Skip replacement if line matches ignore pattern
             if (shouldIgnoreLine(currentText)) {
                 return line; // Return unchanged line
             }
-            
+
             let newModified = currentText;
             let replacedCountInLine = 0; // Count replacements for this line
 
@@ -798,8 +812,7 @@ export function handleReplaceAll(
     // and call the toast only once.
     setTimeout(() => {
         if (totalReplacements > 0) {
-            // because there is a bug with totalReplacements, we must divide by 2
-            toast?.success(`Replaced ${Number(totalReplacements / 2)} instance(s) of "${replaceTerm}" with "${replaceWith}"`);
+            toast?.success(`Replaced ${Number(totalReplacements)} instance(s) of "${replaceTerm}" with "${replaceWith}"`);
         } else {
             toast?.info(`"${replaceTerm}" not found`);
         }
@@ -854,4 +867,44 @@ export const handleResetLine = (
         setFormValues(prev => ({ ...prev, lyrics: entireLyricsText }));
         return updatedLyrics;
     });
+};
+// A snippet from src/app/change-lyrics/utils.ts
+export const reconstructLyricsFromCheckout = (originalLyricsText: string, checkoutData: CheckoutData): LyricLine[] => {
+    // console.log('=== RECONSTRUCT LYRICS DEBUG ===');
+    // console.log('Original lyrics length:', originalLyricsText.length);
+    // console.log('Modified lyrics length:', checkoutData.modifiedLyrics.length);
+    // console.log('Changed words:', checkoutData.changedWords);
+
+    const originalLines = originalLyricsText.split('\n');
+    const modifiedLines = checkoutData.modifiedLyrics.split('\n');
+
+    // console.log('Original lines count:', originalLines.length);
+    // console.log('Modified lines count:', modifiedLines.length);
+
+    const reconstructedLyrics: LyricLine[] = [];
+    const maxLines = Math.max(originalLines.length, modifiedLines.length);
+
+    for (let i = 0; i < maxLines; i++) {
+        const originalLine = (originalLines[i] || '').trim();
+        const modifiedLine = (modifiedLines[i] || '').trim();
+
+        // Compute wordChanges using calculateWordChanges
+        const wordChanges = calculateWordChanges(originalLine, modifiedLine);
+
+        // Generate markedText for display consistency
+        const markedText = generateMarkedText(originalLine, modifiedLine, wordChanges);
+
+        reconstructedLyrics.push({
+            id: i + 1,
+            original: originalLine,
+            modified: modifiedLine,
+            markedText: markedText,
+            wordChanges: wordChanges
+        });
+    }
+
+    // console.log('Reconstructed lyrics sample:', reconstructedLyrics.slice(0, 3));
+    // console.log('=== END RECONSTRUCT LYRICS DEBUG ===');
+
+    return reconstructedLyrics;
 };

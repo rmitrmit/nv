@@ -1,19 +1,20 @@
 // src\app\change-lyrics\page.tsx
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronRight, ListMusic, ArrowRight, Eraser, ExternalLink } from 'lucide-react';
+import Link from "next/link";
+import { ChevronRight, ListMusic, ArrowRight, Eraser, ExternalLink, ArrowLeft, AudioLines } from 'lucide-react';
 import React from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Form from '@radix-ui/react-form';
 import * as Separator from '@radix-ui/react-separator';
-import SignInToSaveButton from "@/components/SignInToSaveButton";
-import { Toaster, toast } from 'sonner';
+// import SignInToSaveButton from "@/components/SignInToSaveButton";
+import { toast } from 'sonner';
 import { StepIndicator, StepDivider, type StepProps } from '@/components/layouts/StepNavigation';
 import BackButton from '@/components/BackButton';
 import Image from 'next/image';
-import { handleReplaceAll, handleResetLyrics, handleLyricChange, handleResetLine, LyricLine, getDistinctChangedWords, generateLyricsData } from './utils';
+import { handleReplaceAll, handleResetLyrics, handleLyricChange, handleResetLine, LyricLine, getDistinctChangedWords, generateLyricsData, CheckoutData, reconstructLyricsFromCheckout } from './utils';
 import { ExternalLyricsResponse } from '../api/lyrics/route';
 
 // Create a wrapper component that uses useSearchParams
@@ -31,6 +32,7 @@ function ChangeLyricsPageContent() {
     // State definitions
     const [currentStep, setCurrentStep] = useState(2);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [loadingButton, setLoadingButton] = useState<'sample' | 'review' | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [originalLyricsText, setOriginalLyricsText] = useState<string>('');
     const [isError, setIsError] = useState<boolean>(false);
@@ -44,6 +46,14 @@ function ChangeLyricsPageContent() {
     });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [distinctChangedWords, setDistinctChangedWords] = useState<string[]>([]);
+    const [, setHasFetchedLyrics] = useState(false);
+
+    // Add a more comprehensive tracking state for API calls
+    const [fetchState, setFetchState] = useState<'idle' | 'fetching' | 'success' | 'error'>('idle');
+    const fetchInProgressRef = useRef(false);
+    const hasInitializedRef = useRef(false);
+    const [isStateRestored, setIsStateRestored] = useState(false);
+
 
     const calculateCost = (wordChanges: number): number => {
         if (wordChanges <= 0) return 0;
@@ -52,6 +62,7 @@ function ChangeLyricsPageContent() {
         if (wordChanges <= 20) return 125;
         return 165;
     };
+
     // Updated totalWordChanges calculation
     const totalWordChanges = useMemo(() => {
         const dcw: string[] = getDistinctChangedWords(lyrics);
@@ -61,6 +72,8 @@ function ChangeLyricsPageContent() {
 
     // Calculate cost
     const [cost, setCost] = useState(0);
+
+    // Restore song details from localStorage if not in URL params
     useEffect(() => {
         // Only run if song details are not already set (e.g., from URL params)
         if (!songId && !songTitle && !songArtist && !songImage) {
@@ -88,26 +101,130 @@ function ChangeLyricsPageContent() {
         setIsError(false);
     }, [totalWordChanges]);
 
-    // Manual Entry and Initial State Setup
+    // State Restoration - This runs FIRST and takes priority
     useEffect(() => {
+        if (isStateRestored) return; // Prevent multiple restorations
+
+        try {
+            const savedStep = localStorage.getItem('currentStep');
+            if (savedStep) setCurrentStep(parseInt(savedStep, 10));
+
+            const savedLyrics = localStorage.getItem('lyrics');
+            const savedFormValues = localStorage.getItem('formValues');
+            const savedRequests = localStorage.getItem('specialRequests');
+            const savedCost = localStorage.getItem('cost');
+
+            // If we have saved lyrics, restore the complete state
+            if (savedLyrics) {
+                const parsedLyrics = JSON.parse(savedLyrics);
+                setLyrics(parsedLyrics);
+                setFetchState('success'); // Mark as completed to prevent API fetch
+                setHasFetchedLyrics(true);
+                // console.log('Restored saved lyrics from localStorage');
+            }
+
+            if (savedFormValues) {
+                const parsedFormValues = JSON.parse(savedFormValues);
+                setFormValues(parsedFormValues);
+                // Also set original lyrics text from form values
+                if (parsedFormValues.lyrics) {
+                    setOriginalLyricsText(parsedFormValues.lyrics);
+                }
+            }
+
+            if (savedRequests) setSpecialRequests(savedRequests);
+            if (savedCost) setCost(parseFloat(savedCost));
+
+            setIsStateRestored(true);
+            // console.log('State restoration completed');
+        } catch (error) {
+            console.error('Error restoring state from localStorage:', error);
+            toast.error('Failed to restore previous changes');
+            setIsStateRestored(true); // Mark as restored even on error to prevent retry
+        }
+    }, [isStateRestored]); // Run only once on mount
+
+    // 1. Handle checkout data loading (separate from API fetching)
+    useEffect(() => {
+        if (!isStateRestored) return; // Wait for state restoration to complete
+
+        const loadCheckout = searchParams.get('loadCheckout') === 'true';
+
+        if (!loadCheckout) return;
+
+        // console.log('=== LOADING CHECKOUT DATA ===');
+
+        try {
+            const checkoutDataStr = localStorage.getItem('checkoutData');
+
+            if (checkoutDataStr) {
+                const parsedCheckoutData: CheckoutData = JSON.parse(checkoutDataStr);
+                // console.log('Parsed checkout data:', parsedCheckoutData);
+
+                // Store a flag to indicate we're in checkout mode
+                localStorage.setItem('isCheckoutMode', 'true');
+
+                // Set song details from checkout data
+                if (!songTitle) setSongTitle(parsedCheckoutData.title);
+                if (!songArtist) setSongArtist(parsedCheckoutData.artist);
+                if (!songUrl) setSongUrl(parsedCheckoutData.url);
+                if (!songImage && parsedCheckoutData.image) setSongImage(parsedCheckoutData.image);
+                setSpecialRequests(parsedCheckoutData.specialRequests === 'None' ? '' : parsedCheckoutData.specialRequests);
+
+                // Process checkout data immediately
+                setOriginalLyricsText(parsedCheckoutData.originalLyrics || '');
+                const reconstructedLyrics = reconstructLyricsFromCheckout(parsedCheckoutData.originalLyrics || '', parsedCheckoutData);
+
+                setLyrics(reconstructedLyrics);
+                setFormValues(prev => ({ ...prev, lyrics: parsedCheckoutData.originalLyrics || '' }));
+                setFetchState('success'); // Mark as completed
+                setHasFetchedLyrics(true);
+
+                // Clean up
+                localStorage.removeItem('checkoutData');
+                setIsLoading(false);
+
+                // console.log('=== CHECKOUT DATA PROCESSED SUCCESSFULLY ===');
+            } else {
+                setFormErrors(prev => ({
+                    ...prev,
+                    general: 'No checkout data found. Please try uploading the file again.'
+                }));
+                setIsLoading(false);
+                setFetchState('error');
+            }
+        } catch (error) {
+            console.error('Error loading checkout data:', error);
+            setFormErrors(prev => ({
+                ...prev,
+                general: 'Error loading checkout data. Please try again.'
+            }));
+            setIsLoading(false);
+            setFetchState('error');
+        }
+    }, [searchParams, songTitle, songArtist, songUrl, songImage, isStateRestored]);
+
+    // 2. Handle manual entry lyrics
+    useEffect(() => {
+        if (!isStateRestored) return; // Wait for state restoration to complete
         if (!isManualEntry) return;
+        if (fetchState === 'success') return; // Skip if state was already restored
 
         try {
             const storedLyrics = localStorage.getItem('manualEntryLyrics');
-            // // console.log('Retrieved manualEntryLyrics:', storedLyrics);
             if (storedLyrics) {
                 setOriginalLyricsText(storedLyrics);
                 setLyrics(generateLyricsData(storedLyrics));
                 setFormValues(prev => ({ ...prev, lyrics: storedLyrics }));
-                console.log('Manual entry lyrics set successfully');
-                setIsLoading(false);
+                setFetchState('success'); // Mark as completed
+                setHasFetchedLyrics(true);
+                // console.log('Manual entry lyrics set successfully');
             } else {
                 setFormErrors(prev => ({
                     ...prev,
                     general: 'No lyrics found for manual entry. Please try again.'
                 }));
-                console.log('No manual entry lyrics found in localStorage');
-                setIsLoading(false);
+                setFetchState('error');
             }
         } catch (error) {
             console.error('Error retrieving manual entry lyrics from localStorage:', error);
@@ -115,110 +232,142 @@ function ChangeLyricsPageContent() {
                 ...prev,
                 general: 'Error loading manual entry lyrics. Please try again.'
             }));
+            setFetchState('error');
+        } finally {
             setIsLoading(false);
         }
-    }, [isManualEntry]);
+    }, [isManualEntry, isStateRestored, fetchState]);
 
-    // Fetch Lyrics from API for Song ID
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchLyricsByTitleAndArtist = async (songTitle: string, songArtist: string) => {
-            try {
-                setIsLoading(true);
-                const slug = songUrl
-                    ? songUrl.replace("https://genius.com/", "").replace(/\/$/, "")
-                    : "";
-
-                const params = new URLSearchParams({
-                    title: songTitle,
-                    artist: songArtist,
-                    slug: slug,
-                });
-
-                const response = await fetch(`/api/lyrics?${params.toString()}`);
-
-                if (!response.ok) {
-                    toast.error('We encountered a techinical issue. Please read below for what to do.');
-                    setIsError(true);
-                    throw new Error(`API error: ${response.status} ${response.status}`);
-                }
-                const data: ExternalLyricsResponse = await response.json();
-
-                if (!isMounted) return;
-
-                if (data.lyrics) {
-                    setOriginalLyricsText(data.lyrics);
-                    setLyrics(generateLyricsData(data.lyrics));
-                    setFormValues(prev => ({ ...prev, lyrics: data.lyrics }));
-                    // console.log('API lyrics fetched and set successfully');
-                } else {
-                    setFormErrors(prev => ({ ...prev, general: 'Lyrics not found' }));
-                    console.error('Lyrics not found from API');
-                }
-            } catch (error) {
-                if (!isMounted) return;
-                setFormErrors(prev => ({
-                    ...prev,
-                    general: `Error loading lyrics: ${error instanceof Error ? error.message : 'Unknown error'}`
-                }));
-                console.error('Error fetching lyrics:', error);
-            } finally {
-                if (isMounted) setIsLoading(false);
-            }
-        };
-
-        // Skip API fetch if manual entry or required data is missing
-        if (isManualEntry || !songTitle || !songArtist) return;
-
-        // Check if there are saved lyrics in localStorage
-        const savedLyrics = localStorage.getItem('lyrics');
-        if (savedLyrics) {
-            // console.log('Skipping API fetch; using saved lyrics from localStorage');
-            return; // Exit early if saved lyrics exist
+    // 3. Simplified fetchLyricsByTitleAndArtist function
+    const fetchLyricsByTitleAndArtist = useCallback(async (songTitle: string, songArtist: string) => {
+        // Prevent multiple simultaneous requests
+        if (fetchState === 'fetching' || fetchInProgressRef.current) {
+            // console.log('Already fetching, skipping request');
+            return;
         }
 
-        // Proceed with fetch if no saved lyrics
-        if (songId) {
-            fetchLyricsByTitleAndArtist(songTitle, songArtist);
+        fetchInProgressRef.current = true;
+        setFetchState('fetching');
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            setIsLoading(false);
+            fetchInProgressRef.current = false;
+            setFetchState('error');
+            setFormErrors(prev => ({
+                ...prev,
+                general: 'Request timed out. Please try again.'
+            }));
+            toast.error('Request timed out', {
+                description: 'The lyrics request took too long. Please try again.',
+            });
+        }, 20000);
+
+        try {
+            setIsLoading(true);
+
+            const slug = songUrl
+                ? songUrl.replace("https://genius.com/", "").replace(/\/$/, "")
+                : "";
+            const params = new URLSearchParams({
+                title: songTitle,
+                artist: songArtist,
+                slug: slug,
+            });
+
+            // console.log('=== MAKING API REQUEST ===', { title: songTitle, artist: songArtist });
+            const response = await fetch(`/api/lyrics?${params.toString()}`, {
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    toast.error('Lyrics not found', {
+                        description: 'The lyrics for this song could not be found. Please check the song details or try manual entry.',
+                    });
+                } else {
+                    toast.error('Error fetching lyrics', {
+                        description: `An error occurred: ${response.statusText}`,
+                    });
+                }
+                setIsError(true);
+                setFetchState('error');
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data: ExternalLyricsResponse = await response.json();
+
+            if (data.lyrics) {
+                setOriginalLyricsText(data.lyrics);
+                setLyrics(generateLyricsData(data.lyrics));
+                setFormValues(prev => ({ ...prev, lyrics: data.lyrics }));
+                setHasFetchedLyrics(true);
+                setFetchState('success');
+                // console.log('=== API REQUEST SUCCESSFUL ===');
+            } else {
+                setFormErrors(prev => ({ ...prev, general: 'Lyrics not found' }));
+                setFetchState('error');
+            }
+        } catch (error) {
+            clearTimeout(timeoutId);
+
+            if (error instanceof Error && error.name === 'AbortError') {
+                setFetchState('idle');
+                return;
+            }
+
+            setFormErrors(prev => ({
+                ...prev,
+                general: `Error loading lyrics: ${error instanceof Error ? error.message : 'Unknown error'}`
+            }));
+            setFetchState('error');
+            console.error('Error fetching lyrics:', error);
+        } finally {
+            setIsLoading(false);
+            fetchInProgressRef.current = false;
         }
 
         return () => {
-            isMounted = false;
+            clearTimeout(timeoutId);
+            controller.abort();
         };
-    }, [songTitle, songArtist, songId, songUrl, isManualEntry]);
+    }, [fetchState, songUrl]);
 
-    // State Restoration for Non-Manual Entry
+    // 4. Single initialization effect to prevent duplicate API calls
     useEffect(() => {
-        if (isManualEntry) return; // Skip restoration for manual entry
+        if (!isStateRestored) return; // Wait for state restoration to complete
 
-        try {
-            const savedStep = localStorage.getItem('currentStep');
-            if (savedStep) setCurrentStep(parseInt(savedStep, 10));
-
-            const savedLyrics = localStorage.getItem('lyrics');
-            if (savedLyrics) {
-                setLyrics(JSON.parse(savedLyrics));
-                // console.log('Restored saved lyrics:', JSON.parse(savedLyrics));
-            }
-
-            const savedRequests = localStorage.getItem('specialRequests');
-            if (savedRequests) setSpecialRequests(savedRequests);
-
-            const savedFormValues = localStorage.getItem('formValues');
-            if (savedFormValues) setFormValues(JSON.parse(savedFormValues));
-
-            const savedCost = localStorage.getItem('cost');
-            if (savedCost) setCost(parseFloat(savedCost));
-
-            // console.log('State restoration completed');
-        } catch (error) {
-            console.error('Error restoring state from localStorage:', error);
-            toast.error('Failed to restore previous changes');
+        // Skip if already initialized
+        if (hasInitializedRef.current) {
+            return;
         }
-    }, [isManualEntry]); // Run only on mount
 
+        const loadCheckout = searchParams.get('loadCheckout') === 'true';
+        const isCheckoutMode = localStorage.getItem('isCheckoutMode') === 'true';
 
+        // Skip API fetch for these conditions
+        if (isManualEntry || loadCheckout || isCheckoutMode || fetchState === 'success') {
+            hasInitializedRef.current = true;
+            return;
+        }
+
+        // Only fetch if we have both title and artist, and haven't fetched yet
+        if (songTitle && songArtist && fetchState === 'idle') {
+            // console.log('=== INITIALIZING LYRICS FETCH ===');
+            hasInitializedRef.current = true;
+            fetchLyricsByTitleAndArtist(songTitle, songArtist);
+        }
+    }, [songTitle, songArtist, isManualEntry, searchParams, fetchState, fetchLyricsByTitleAndArtist, isStateRestored]);
+
+    // 5. Cleanup effect
+    useEffect(() => {
+        return () => {
+            fetchInProgressRef.current = false;
+        };
+    }, []);
 
     const validateForm = () => {
         const errors: Record<string, string> = {};
@@ -249,9 +398,10 @@ function ChangeLyricsPageContent() {
         return { isValid, errors }; // Return both the validity and the errors object
     };
 
-
-    const handleNextStep = async (e: React.FormEvent) => {
+    const handleNextStep = async (e: React.FormEvent, path: string, buttonType: 'sample' | 'review' | null) => {
+        setLoadingButton(buttonType); // Set which button is loading
         e.preventDefault();
+
         const hasChanges = lyrics.some((line) =>
             line.wordChanges && line.wordChanges.some(change => change.hasChanged)
         );
@@ -259,31 +409,31 @@ function ChangeLyricsPageContent() {
             toast.error('Unable to proceed: No changes were made.', {
                 description: 'Please modify at least one lyric before proceeding.',
             });
+            setLoadingButton(null); // Reset loading state
             return;
         }
 
-        // Run validation and get the fresh errors object
         const { isValid, errors } = validateForm();
 
-        // Show toast for special requests error if that's the issue
         if (!isValid) {
             if (errors.specialRequests) {
                 toast.error('Special request too long', {
                     description: errors.specialRequests,
                 });
+                setLoadingButton(null); // Reset loading state
                 return;
             }
 
-            // Show toast for other validation errors
             const firstError = Object.values(errors)[0];
             toast.error('Invalid input', {
                 description: firstError || 'Please fix the errors in the form',
             });
+            setLoadingButton(null); // Reset loading state
             return;
         }
 
         try {
-            // Store lyric-related data
+            // Your existing localStorage and navigation logic...
             localStorage.setItem('lyrics', JSON.stringify(lyrics));
             localStorage.setItem('cost', cost.toString());
             localStorage.setItem('currentStep', (currentStep + 1).toString());
@@ -291,7 +441,6 @@ function ChangeLyricsPageContent() {
             localStorage.setItem('formValues', JSON.stringify(formValues));
             localStorage.setItem('deliveryOption', 'Standard Delivery');
 
-            // Store song information safely in localStorage
             if (songId) localStorage.setItem('songId', songId);
             if (songTitle) localStorage.setItem('songTitle', songTitle);
             if (songArtist) localStorage.setItem('songArtist', songArtist);
@@ -299,16 +448,62 @@ function ChangeLyricsPageContent() {
             if (songUrl) localStorage.setItem('songUrl', songUrl);
 
             setCurrentStep(currentStep + 1);
-            router.push("/review");
+            router.push(path);
 
         } catch (err) {
             console.error('Error during next step:', err);
             toast.error('Error', {
                 description: 'Failed to save data. Please try again.',
             });
+            setLoadingButton(null); // Reset loading state
         }
     };
 
+    const replaceAllTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+
+    // Separate the core replace logic from event handling
+    const executeReplaceAll = useCallback(() => {
+        // Clear any existing timeout
+        if (replaceAllTimeoutRef.current) {
+            clearTimeout(replaceAllTimeoutRef.current);
+        }
+
+        // Debounce the call with a small delay
+        replaceAllTimeoutRef.current = setTimeout(() => {
+            // console.log('Executing Replace All...');
+            handleReplaceAll(replaceTerm, replaceWith, setLyrics, setFormValues, toast);
+
+            // Clear the input fields after the replace operation
+            setReplaceTerm('');
+            setReplaceWith('');
+        }, 100);
+        setIsLoading(false);
+    }, [replaceTerm, replaceWith, setLyrics, setFormValues]);
+
+    // Handle keyboard events
+    const handleReplaceWithKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            executeReplaceAll();
+        }
+    }, [executeReplaceAll]);
+
+    // Handle mouse events
+    const handleReplaceAllClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        executeReplaceAll();
+    }, [executeReplaceAll]);
+
+    // Clean up timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (replaceAllTimeoutRef.current) {
+                clearTimeout(replaceAllTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Define step data
     const steps: StepProps[] = [
@@ -316,52 +511,57 @@ function ChangeLyricsPageContent() {
         { step: 2, label: "Change Lyrics", isActive: currentStep === 2, isComplete: currentStep > 2 },
         { step: 3, label: "Review Order", isActive: currentStep === 3, isComplete: false },
     ];
+
     const NavigationBtn = () => (
         <div className="flex flex-row items-center gap-2 py-0">
             <BackButton href="/" />
             {!isError && (
-                <button
-                    onClick={handleNextStep}
-                    disabled={isLoading}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md ml-auto text-sm md:text-base h-10 md:h-12"
-                    type="button"
-                >
-                    {isLoading ? (
-                        "Processing..."
-                    ) : (
-                        <>
-                            Review Order <span className="font-bold text-lg">US${cost}</span>
-                            <ChevronRight className="-mr-1 size-4 md:size-5" />
-                        </>
-                    )}
-
-                </button>
+                <div className="ml-auto flex items-center gap-2">
+                    <button
+                        disabled={loadingButton !== null} // Disable both buttons when either is loading
+                        onClick={(e) => handleNextStep(e, '/review-sample', 'sample')}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary bg-primary text-white opacity-80 hover:opacity-90 hover:ring-blue-900/50 focus-visible:ring focus-visible:ring-blue-900/50 active:opacity-90 active:ring-0 px-2 rounded-md text-sm md:text-base h-10 md:h-12 mr-1"
+                    >
+                        {loadingButton === 'sample' ? (
+                            "Processing..."
+                        ) : (
+                            <>
+                                <AudioLines className="-ml-1 size-4 md:size-5 -mt-[0.05rem]" />
+                                View Sample
+                            </>
+                        )}
+                    </button>
+                    <button
+                        onClick={(e) => handleNextStep(e, '/review', 'review')}
+                        disabled={loadingButton !== null} // Disable both buttons when either is loading
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md shadow text-sm md:text-base h-10 md:h-12"
+                        type="button"
+                    >
+                        {loadingButton === 'review' ? (
+                            "Processing..."
+                        ) : (
+                            <>
+                                Review Order <span className="font-bold text-lg">US${cost}</span>
+                                <ChevronRight className="-mr-1 size-4 md:size-5" />
+                            </>
+                        )}
+                    </button>
+                </div>
             )}
         </div>
     );
 
-
+    // ... more code
+    // A snippet from "src\app\change-lyrics\page.tsx"
     return (
         <main className="min-h-0 w-full">
             <div className="w-full min-h-full">
-                <Toaster
-                    position="top-center"
-                    toastOptions={{
-                        style: {
-                            marginTop: "7rem",
-                            padding: "16px",
-                            color: "oklch(0.396 0.141 25.723)",
-                            backgroundColor: "oklch(0.971 0.013 17.38)",
-                            fontSize: "1.15rem"
-                        },
-                    }}
-                />
                 <section className="mx-auto w-full max-w-[1280px] flex flex-col space-y-2 px-6 sm:px-12 md:px-16 lg:px-32 xl:px-40 2xl:px-52">
                     {/* Header/Nav */}
                     <nav className="w-full bg-transparent px-4 pb-4">
-                        <div className="container mx-auto flex justify-end">
-                            <SignInToSaveButton />
-                        </div>
+                        {/* <div className="container mx-auto flex justify-end"> */}
+                        {/* <SignInToSaveButton /> */}
+                        {/* </div> */}
                     </nav>
 
                     {/* Step Indicators as Tabs */}
@@ -484,11 +684,9 @@ function ChangeLyricsPageContent() {
                                             <p>
                                                 Lyrics Changes ({distinctChangedWords.length} word{distinctChangedWords.length > 1 ? 's' : ''})
                                             </p>
-                                            {distinctChangedWords.length > 0 && (<p className=''>&quot;{
-                                                distinctChangedWords.map((word, index) => (
-                                                    <span key={index} className='inline-block mr-1'>{word} {index != distinctChangedWords.length - 1 ? ', ' : ''}</span>
-                                                ))
-                                            }&quot;</p>)}
+                                            {distinctChangedWords.length > 0 && (
+                                                <p className=''>&quot;{distinctChangedWords.join(', ')}&quot;</p>
+                                            )}
                                         </div>
 
 
@@ -528,7 +726,7 @@ function ChangeLyricsPageContent() {
 
                             {/* Lyrics editor */}
                             {!isLoading && (
-                                <Form.Root className="flex flex-1 flex-col gap-4 pt-2 pb-4" onSubmit={handleNextStep}>
+                                <Form.Root className="flex flex-1 flex-col gap-4 pt-2 pb-4" onSubmit={(e) => handleNextStep(e, '/review', null)}>
                                     <div className="mt-2 overflow-y-auto max-h-[85vh]">
                                         <div className="relative w-full overflow-visible">
                                             <table className="caption-bottom text-sm relative h-10 w-full text-clip">
@@ -550,7 +748,7 @@ function ChangeLyricsPageContent() {
                                                                     {line.id}
                                                                 </td>
                                                                 <td className="py-4 px-3 align-middle [&:has([role=checkbox])]:pr-0 text-sm md:text-base text-gray-900">
-                                                                    {line.original}
+                                                                    {line.original.replace(/&amp;/g, '&')}
                                                                 </td>
                                                                 <td className="px-0 py-4 align-middle [&:has([role=checkbox])]:pr-0">
                                                                     <ArrowRight className="w-4 text-muted" />
@@ -615,6 +813,12 @@ function ChangeLyricsPageContent() {
                                                         </a>
                                                         . Thank you!
                                                     </p>
+                                                    <div className="mt-6">
+                                                        <Link href="/" className="inline-flex items-center text-blue-600 hover:underline">
+                                                            <ArrowLeft className="w-4 h-4 mr-2" />
+                                                            Go back to previous page
+                                                        </Link>
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -647,12 +851,14 @@ function ChangeLyricsPageContent() {
                                                 type="text"
                                                 value={replaceWith}
                                                 onChange={(e) => setReplaceWith(e.target.value)}
+                                                onKeyDown={handleReplaceWithKeyDown}
                                                 placeholder="Replace with..."
                                                 className="flex w-full rounded-md border border-component-input bg-foundation px-3 py-2 ring-offset-foundation placeholder:text-muted focus-visible:outline-none focus-visible:ring focus-visible:ring-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-foundation-secondary text-sm md:text-base text-primary"
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => handleReplaceAll(replaceTerm, replaceWith, setLyrics, setFormValues, toast)}
+                                                onClick={handleReplaceAllClick}
+                                                // onClick={() => handleReplaceAll(replaceTerm, replaceWith, setLyrics, setFormValues, toast)}
                                                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-normal transition duration-150 hover:ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/95 hover:ring-primary/50 focus-visible:ring focus-visible:ring-primary/50 active:bg-primary/75 active:ring-0 px-5 rounded-md text-sm md:text-base h-10 md:h-12 w-full sm:w-auto"
                                             >
                                                 Replace All

@@ -1,10 +1,11 @@
+// src/app/api/genius/lyrics/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const allowedOrigins = [
-    'http://localhost:3000',
-    'https://evjbcx-s0.myshopify.com',
-    'https://nv-prod.vercel.app'
-];
+if (process.env.API_ALLOWED_ORIGINS == undefined) {
+    throw new Error("Missing ALLOWED_ORIGINS environment variable");
+}
+
+const allowedOrigins = String(process.env.API_ALLOWED_ORIGINS).split(',');
 
 // Fix: Properly define the interface with correct syntax
 interface LyricsResponse {
