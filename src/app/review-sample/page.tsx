@@ -398,7 +398,10 @@ function OrderReviewSamplePageContent() {
                             {/* Navigation Buttons */}
                             {!isLoading && (
                                 <div className="flex flex-row items-center gap-2 py-0">
-                                    <BackButton href="/change-lyrics" />
+                                    <BackButton
+                                        href="/change-lyrics"
+                                        enableCheckoutDetection={true} // Only enable on review pages
+                                    />
                                 </div>
                             )}
 
@@ -552,7 +555,10 @@ function OrderReviewSamplePageContent() {
                             {/* Navigation Buttons */}
                             {!isLoading && (
                                 <div className="flex flex-row items-center gap-2 py-0">
-                                    <BackButton href="/change-lyrics" />
+                                    <BackButton
+                                        href="/change-lyrics"
+                                        enableCheckoutDetection={true} // Only enable on review pages
+                                    />
                                 </div>
                             )}
                         </Tabs.Content>
