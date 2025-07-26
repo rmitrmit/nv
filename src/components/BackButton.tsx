@@ -1,13 +1,13 @@
-// src\components\BackButton.tsx
-"use client"; // Ensure this is a client component
+// src/components/BackButton.tsx
+"use client";
 
-import { useRouter } from "next/navigation"; // Use useRouter for programmatic navigation
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 
 interface BackButtonProps {
     href: string;
-    enableReloadProtection?: boolean; // Optional prop to control reload protection
+    enableReloadProtection?: boolean;
 }
 
 const BackButton: React.FC<BackButtonProps> = ({
@@ -15,39 +15,56 @@ const BackButton: React.FC<BackButtonProps> = ({
     enableReloadProtection = true
 }) => {
     const router = useRouter();
+    const isNavigatingRef = useRef(false);
 
-    // Add beforeunload event listener for reload/URL change protection
     useEffect(() => {
         if (!enableReloadProtection) return;
 
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            // Modern browsers ignore custom messages for security reasons
-            // They show their own generic message like "Reload site? Changes you made may not be saved."
+            // Let PostHog do its thing first by not preventing immediately
+            // Only prevent the actual browser dialog for reloads/close
+
+            if (isNavigatingRef.current) {
+                // This is our programmatic navigation - let it proceed
+                return;
+            }
+
+            // This is likely a real reload/close - show the confirmation
             e.preventDefault();
-            e.returnValue = ""; // Empty string or any truthy value triggers the dialog
-            return ""; // This return value is ignored by modern browsers
+            e.returnValue = "";
+            return "";
         };
 
-        // Add the event listener
-        window.addEventListener("beforeunload", handleBeforeUnload);
+        // Add our handler with passive: false to ensure we can prevent default
+        window.addEventListener("beforeunload", handleBeforeUnload, { passive: false });
 
-        // Cleanup function to remove the event listener
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
         };
     }, [enableReloadProtection]);
 
     const handleBackClick = () => {
-        // Check if the href is "/" to show a reset warning
+        // Set flag before navigation
+        isNavigatingRef.current = true;
+
         if (href === "/") {
             const shouldNavigate = window.confirm(
                 "Are you sure you want to go back? All progress will be reset."
             );
 
-            if (!shouldNavigate) return;
+            if (!shouldNavigate) {
+                isNavigatingRef.current = false; // Reset flag
+                return;
+            }
         }
-        // Navigate back without any warning if href is not "/"
+
+        // Navigate - this should not trigger beforeunload dialog
         router.push(href);
+
+        // Reset flag after a short delay
+        setTimeout(() => {
+            isNavigatingRef.current = false;
+        }, 100);
     };
 
     return (
