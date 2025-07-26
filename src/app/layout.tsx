@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import IframeHeightManager from "@/components/IframeHeightManager";
 import ViewportToaster from "@/components/ViewportToaster";
-import { PostHogProvider } from './providers'
+// import { PostHogProvider } from './providers'
 
 export const metadata: Metadata = {
     title: "Create Next App",
@@ -23,9 +23,9 @@ export default function RootLayout({
                     id="main-content"
                     style={{ height: "auto", minHeight: "0", overflow: "visible" }}
                 >
-                    <PostHogProvider>
+                    {/* <PostHogProvider> */}
                         {children}
-                    </PostHogProvider>
+                    {/* </PostHogProvider> */}
                 </div>
                 <IframeHeightManager />
                 <ViewportToaster />
