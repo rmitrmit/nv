@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-    --background: theme('colors.blue.600');
-    --foreground: theme('colors.blue.600');
-    text: theme('colors.white');
+    --background: theme('colors.white.600');
+    --foreground: theme('colors.white.600');
+    text: theme('colors.black');
 }
 
 /* Optional: Light mode
