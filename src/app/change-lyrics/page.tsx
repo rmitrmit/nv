@@ -3,6 +3,7 @@
 
 import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Info, ChevronRight, Eraser, RotateCcw } from 'lucide-react';
 import React from 'react';
 import LyricsEditor from '@/components/LyricsEditor';
@@ -30,7 +31,7 @@ function ChangeLyricsPageContent() {
     const [replaceWith, setReplaceWith] = useState('');
     const [formValues, setFormValues] = useState({ songUrl: songUrl || '', lyrics: '' });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-    const [distinctChangedWords, setDistinctChangedWords] = useState<string[]>([]);
+    const [, setDistinctChangedWords] = useState<string[]>([]);
     const [, setHasFetchedLyrics] = useState(false);
     const [fetchState, setFetchState] = useState<'idle' | 'fetching' | 'success' | 'error'>('idle');
     const fetchInProgressRef = useRef(false);
@@ -464,10 +465,10 @@ function ChangeLyricsPageContent() {
                         </div>
                         {/* Back + Review */}
                         <div className="flex gap-3">
-                            <a href="/"
+                            <Link href="/"
                                 className="h-14 px-6 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
                                 ← Back
-                            </a>
+                            </Link>
                             <button
                                 type="button"
                                 disabled={loadingButton !== null}
