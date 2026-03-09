@@ -309,13 +309,13 @@ function ChangeLyricsPageContent() {
             {!isLoading && (
                 <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6 pt-safe">
                     <div className="mx-auto max-w-5xl px-4 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-2">
-                        {/* Left: step badge */}
-                        <span className="text-xs font-bold tracking-[0.15em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-3 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0 whitespace-nowrap">
+                        {/* Left: step badge — hidden on mobile */}
+                        <span className="hidden sm:inline-flex text-xs font-bold tracking-[0.15em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-3 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0 whitespace-nowrap">
                             Step 2 of 3
                         </span>
 
-                        {/* Center: word count — hidden on small mobile */}
-                        <p className="hidden sm:block text-sm font-semibold text-black/40 flex-shrink-0">
+                        {/* Word count — always visible */}
+                        <p className="text-sm font-semibold text-black/40 flex-shrink-0">
                             {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
                         </p>
 
@@ -336,6 +336,12 @@ function ChangeLyricsPageContent() {
 
                 {/* Page heading + song info */}
                 <div className="w-full text-center">
+                    {/* Step badge — visible on mobile only, in content flow */}
+                    <div className="flex justify-center mb-4 sm:hidden">
+                        <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5">
+                            Step 2 of 3
+                        </span>
+                    </div>
                     <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight mb-2">Edit your lyrics</h1>
                     {(songTitle || songArtist) && (
                         <div className="flex items-center gap-3 mt-5 p-4 bg-white rounded-2xl border border-black/8 shadow-sm justify-center">
