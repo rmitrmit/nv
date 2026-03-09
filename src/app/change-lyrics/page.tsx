@@ -251,8 +251,7 @@ function ChangeLyricsPageContent() {
     };
 
     const replaceAllTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [confirmingReplace, setConfirmingReplace] = useState(false);
-    const confirmTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     const executeReplaceAll = useCallback(() => {
         if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current);
@@ -262,32 +261,15 @@ function ChangeLyricsPageContent() {
         replaceAllTimeoutRef.current = setTimeout(() => {
             handleReplaceAll(cleanReplaceTerm, cleanReplaceWith, setLyrics, setFormValues, toast);
             setReplaceTerm(''); setReplaceWith('');
-            setConfirmingReplace(false);
         }, 100);
         setIsLoading(false);
     }, [replaceTerm, replaceWith]);
 
-    const handleReplaceAllClick = useCallback(() => {
-        if (!replaceTerm.trim()) { toast.error('Enter a word to replace'); return; }
-        if (!confirmingReplace) {
-            setConfirmingReplace(true);
-            // Auto-cancel after 4 seconds if user doesn't confirm
-            if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
-            confirmTimeoutRef.current = setTimeout(() => setConfirmingReplace(false), 4000);
-        } else {
-            if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
-            executeReplaceAll();
-        }
-    }, [confirmingReplace, replaceTerm, executeReplaceAll]);
-
     const handleReplaceWithKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') { e.preventDefault(); handleReplaceAllClick(); }
-    }, [handleReplaceAllClick]);
+        if (e.key === 'Enter') { e.preventDefault(); executeReplaceAll(); }
+    }, [executeReplaceAll]);
 
-    useEffect(() => { return () => { 
-        if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current);
-        if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
-    }; }, []);
+    useEffect(() => { return () => { if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current); }; }, []);
 
     const [history, setHistory] = useState<string[]>([]);
     const isInternalUpdate = useRef(false);
@@ -427,9 +409,9 @@ function ChangeLyricsPageContent() {
                                     onKeyDown={handleReplaceWithKeyDown}
                                     placeholder="Replace with…"
                                     className="w-full h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:border-black/20 transition-all" />
-                                <button type="button" onClick={handleReplaceAllClick}
-                                    className={`w-full h-14 rounded-2xl text-white text-base font-semibold transition-all ${confirmingReplace ? 'bg-orange-600 hover:bg-orange-700' : 'bg-[#8b1a1a] hover:bg-[#7a1616]'}`}>
-                                    {confirmingReplace ? '⚠ Tap again to confirm replace all' : 'Replace all'}
+                                <button type="button" onClick={executeReplaceAll}
+                                    className="w-full h-14 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors">
+                                    Replace all
                                 </button>
                             </div>
                         </div>
@@ -465,11 +447,7 @@ function ChangeLyricsPageContent() {
                                 <RotateCcw className="size-4" /> Undo
                             </button>
                             <button type="button"
-                                onClick={() => {
-                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
-                                    setLyrics(generateLyricsData(originalLyricsText));
-                                    toast.success("Reset to original lyrics");
-                                }}
+                                onClick={() => setShowResetConfirm(true)}
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <Eraser className="size-4" /> Reset all
                             </button>
@@ -485,6 +463,37 @@ function ChangeLyricsPageContent() {
                 </div>
             )}
 
+            {/* Reset All confirmation modal */}
+            {showResetConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowResetConfirm(false)}>
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+                    <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-lg font-bold text-black">Reset all lyrics?</h3>
+                            <p className="text-sm text-black/50">This will undo all your changes and restore the original lyrics. This cannot be undone.</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowResetConfirm(false)}
+                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black transition-all">
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
+                                    setLyrics(generateLyricsData(originalLyricsText));
+                                    setShowResetConfirm(false);
+                                    toast.success("Reset to original lyrics");
+                                }}
+                                className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-all">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
