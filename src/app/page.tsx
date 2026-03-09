@@ -6,6 +6,15 @@ import { Search, X } from 'lucide-react';
 import React from "react";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+// 1. Import the font loader
+import { Roboto } from 'next/font/google';
+
+// 2. Configure the font
+const roboto = Roboto({
+    subsets: ['latin'],
+    weight: ['400', '500', '700'],
+    display: 'swap',
+});
 
 export type CheckoutData = {
     title: string; artist: string; image?: string; url: string;
@@ -65,7 +74,8 @@ export default function LyricChangerPage() {
     };
 
     return (
-        <main className="h-screen flex flex-col bg-[#f0ede8] font-sans">
+        /* 3. Apply roboto.className to the wrapper */
+        <main className={`${roboto.className} h-screen flex flex-col bg-[#f0ede8]`}>
 
             {/* Top */}
             <div className="flex-shrink-0 flex flex-col items-center pt-8 pb-4">
@@ -76,82 +86,82 @@ export default function LyricChangerPage() {
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-6 md:px-16 lg:px-24">
-            <div className="w-full max-w-3xl mx-auto text-center mb-8 mt-6">
-                <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight leading-tight">
-                    Let's get your lyric change started!
-                </h1>
-                <p className="mt-3 text-lg text-black/50">
-                    Pick the song you&apos;d like to personalise.
-                </p>
-            </div>
+                <div className="w-full max-w-3xl mx-auto text-center mb-8 mt-6">
+                    <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight leading-tight">
+                        Let's get your lyric change started!
+                    </h1>
+                    <p className="mt-3 text-lg text-black/50">
+                        Pick the song you&apos;d like to personalise.
+                    </p>
+                </div>
 
-            <div className="w-full max-w-3xl mx-auto flex flex-col gap-6">
+                <div className="w-full max-w-3xl mx-auto flex flex-col gap-6">
 
-                {/* Search — hide once song picked */}
-                {!selectedSong && (
-                    <div className="flex flex-col gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-[#8b1a1a]/40" />
-                            <input
-                                className="w-full h-16 pl-12 pr-10 rounded-2xl bg-white border border-black/10 text-black placeholder:text-black/30 text-lg outline-none focus:border-black/20 transition-all shadow-sm"
-                                type="text" placeholder="Search by artist or song title…"
-                                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                            />
-                            {isLoading && (
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 size-4 border-2 border-black/15 border-t-black/50 rounded-full animate-spin" />
+                    {/* Search — hide once song picked */}
+                    {!selectedSong && (
+                        <div className="flex flex-col gap-3">
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-[#8b1a1a]/40" />
+                                <input
+                                    className="w-full h-16 pl-12 pr-10 rounded-2xl bg-white border border-black/10 text-black placeholder:text-black/30 text-lg outline-none focus:border-black/20 transition-all shadow-sm"
+                                    type="text" placeholder="Search by artist or song title…"
+                                    value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                                />
+                                {isLoading && (
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 size-4 border-2 border-black/15 border-t-black/50 rounded-full animate-spin" />
+                                )}
+                                {searchQuery && !isLoading && (
+                                    <button className="absolute right-4 top-1/2 -translate-y-1/2" onClick={() => { setSearchQuery(''); setShowResults(false); }} type="button">
+                                        <X className="size-4 text-black/30 hover:text-black/60 transition-colors" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {showResults && searchResults.length > 0 && (
+                                <div className="rounded-2xl bg-white border border-black/8 overflow-hidden shadow-lg max-h-72 overflow-y-auto">
+                                    {searchResults.map(song => (
+                                        <button key={song.id} type="button" onClick={() => handleSelectSong(song)}
+                                            className="w-full flex items-center gap-3 px-5 py-4 hover:bg-black/3 transition-colors border-b border-black/4 last:border-0 text-left">
+                                            <div className="min-w-0">
+                                                <p className="text-lg font-semibold text-black truncate">{song.title}</p>
+                                                <p className="text-sm text-black/40 truncate">{song.artist}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             )}
-                            {searchQuery && !isLoading && (
-                                <button className="absolute right-4 top-1/2 -translate-y-1/2" onClick={() => { setSearchQuery(''); setShowResults(false); }} type="button">
-                                    <X className="size-4 text-black/30 hover:text-black/60 transition-colors" />
+
+                            {/* Most requested */}
+                            <div className="mt-4 p-5 rounded-2xl bg-[#8b1a1a]/4 border border-[#8b1a1a]/10">
+                                <p className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] mb-4">Most Requested</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {FAVORITE_SONGS.map(song => (
+                                        <button key={song.id} type="button" onClick={() => handleSelectSong(song)}
+                                            className="text-left w-full px-5 py-4 rounded-2xl bg-white border border-black/8 hover:border-[#8b1a1a]/30 hover:shadow-sm transition-all group">
+                                            <p className="text-base font-semibold text-black/80 group-hover:text-[#8b1a1a] transition-colors">{song.title}</p>
+                                            <p className="text-xs text-black/35 mt-0.5">{song.artist}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Selected song */}
+                    {selectedSong && (
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-4 p-5 rounded-2xl bg-white border border-[#8b1a1a]/20 shadow-sm" style={{boxShadow: "0 0 0 4px rgba(139,26,26,0.04)"}}>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-lg font-semibold text-black truncate">{selectedSong.title}</p>
+                                    <p className="text-base text-black/45 truncate">{selectedSong.artist}</p>
+                                </div>
+                                <button type="button" onClick={() => setSelectedSong(null)} className="p-2 rounded-xl hover:bg-black/5 transition-colors">
+                                    <X className="size-4 text-black/35" />
                                 </button>
-                            )}
-                        </div>
-
-                        {showResults && searchResults.length > 0 && (
-                            <div className="rounded-2xl bg-white border border-black/8 overflow-hidden shadow-lg max-h-72 overflow-y-auto">
-                                {searchResults.map(song => (
-                                    <button key={song.id} type="button" onClick={() => handleSelectSong(song)}
-                                        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-black/3 transition-colors border-b border-black/4 last:border-0 text-left">
-                                        <div className="min-w-0">
-                                            <p className="text-lg font-semibold text-black truncate">{song.title}</p>
-                                            <p className="text-sm text-black/40 truncate">{song.artist}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Most requested */}
-                        <div className="mt-4 p-5 rounded-2xl bg-[#8b1a1a]/4 border border-[#8b1a1a]/10">
-                            <p className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] mb-4">Most Requested</p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {FAVORITE_SONGS.map(song => (
-                                    <button key={song.id} type="button" onClick={() => handleSelectSong(song)}
-                                        className="text-left w-full px-5 py-4 rounded-2xl bg-white border border-black/8 hover:border-[#8b1a1a]/30 hover:shadow-sm transition-all group">
-                                        <p className="text-base font-semibold text-black/80 group-hover:text-[#8b1a1a] transition-colors">{song.title}</p>
-                                        <p className="text-xs text-black/35 mt-0.5">{song.artist}</p>
-                                    </button>
-                                ))}
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* Selected song */}
-                {selectedSong && (
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-center gap-4 p-5 rounded-2xl bg-white border border-[#8b1a1a]/20 shadow-sm" style={{boxShadow: "0 0 0 4px rgba(139,26,26,0.04)"}}>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-lg font-semibold text-black truncate">{selectedSong.title}</p>
-                                <p className="text-base text-black/45 truncate">{selectedSong.artist}</p>
-                            </div>
-                            <button type="button" onClick={() => setSelectedSong(null)} className="p-2 rounded-xl hover:bg-black/5 transition-colors">
-                                <X className="size-4 text-black/35" />
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
             </div>
 
             {/* Bottom button */}
@@ -160,15 +170,13 @@ export default function LyricChangerPage() {
                     type="button"
                     disabled={!selectedSong || isButtonLoading}
                     onClick={handleNext}
-                    className="w-full max-w-3xl h-16 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold disabled:opacity-25 disabled: hover:bg-[#7a1616] transition-all shadow-lg"
+                    className="w-full max-w-3xl h-16 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold disabled:opacity-25 hover:bg-[#7a1616] transition-all shadow-lg"
                 >
                     {isButtonLoading ? 'Loading…' : 'Next'}
                 </button>
             </div>
-
-            {/* Spacer so content isn't hidden behind fixed button */}
             
-                    <div className="h-28" />
+            <div className="h-28" />
         </main>
     );
 }
