@@ -6,6 +6,8 @@ import { Check, ChevronRight, PackageCheck } from 'lucide-react';
 import React from "react";
 import { toast } from "sonner";
 import { getDistinctChangedWords, type LyricLine } from '../change-lyrics/utils';
+
+type ProductOption = {
     id: string;
     title: string;
     description: string;
