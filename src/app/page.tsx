@@ -78,7 +78,7 @@ export default function LyricChangerPage() {
             <div className="flex-1 overflow-y-auto px-6 md:px-16 lg:px-24">
             <div className="w-full max-w-3xl mx-auto text-center mb-8 mt-6">
                 <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight leading-tight">
-                    Choose a song
+                    Let's get your lyric change started!
                 </h1>
                 <p className="mt-3 text-lg text-black/50">
                     Pick the song you&apos;d like to personalise.
