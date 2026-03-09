@@ -381,7 +381,7 @@ function ChangeLyricsPageContent() {
 
                         {/* Lyrics editor */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Edit your lyrics in the box below</label>
+                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Edit your desired lyrics below</label>
                             <LyricsEditor
                                 value={formValues.lyrics}
                                 originalValue={originalLyricsText}
