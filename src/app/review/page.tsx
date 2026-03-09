@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Check, ChevronRight, PackageCheck } from 'lucide-react';
 import React from "react";
 import { toast } from "sonner";
@@ -27,7 +26,6 @@ export type LyricLine = {
 };
 
 function OrderReviewPageContent() {
-    const router = useRouter();
     const [songTitle, setSongTitle] = useState("");
     const [songArtist, setSongArtist] = useState("");
     const [songUrl, setSongUrl] = useState("");

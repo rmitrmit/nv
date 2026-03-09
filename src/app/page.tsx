@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, X, ChevronRight, Upload, Link, FileText, ShoppingCart } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import React from "react";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -80,7 +80,7 @@ export default function LyricChangerPage() {
                     Choose a song
                 </h1>
                 <p className="mt-3 text-lg text-black/50">
-                    Pick the song you'd like to personalise.
+                    Pick the song you&apos;d like to personalise.
                 </p>
             </div>
 
