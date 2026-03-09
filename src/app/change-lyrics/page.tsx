@@ -251,6 +251,9 @@ function ChangeLyricsPageContent() {
     };
 
     const replaceAllTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [confirmingReplace, setConfirmingReplace] = useState(false);
+    const confirmTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const executeReplaceAll = useCallback(() => {
         if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current);
         const cleanReplaceTerm = replaceTerm.trim();
@@ -259,15 +262,32 @@ function ChangeLyricsPageContent() {
         replaceAllTimeoutRef.current = setTimeout(() => {
             handleReplaceAll(cleanReplaceTerm, cleanReplaceWith, setLyrics, setFormValues, toast);
             setReplaceTerm(''); setReplaceWith('');
+            setConfirmingReplace(false);
         }, 100);
         setIsLoading(false);
     }, [replaceTerm, replaceWith]);
 
-    const handleReplaceWithKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') { e.preventDefault(); executeReplaceAll(); }
-    }, [executeReplaceAll]);
+    const handleReplaceAllClick = useCallback(() => {
+        if (!replaceTerm.trim()) { toast.error('Enter a word to replace'); return; }
+        if (!confirmingReplace) {
+            setConfirmingReplace(true);
+            // Auto-cancel after 4 seconds if user doesn't confirm
+            if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+            confirmTimeoutRef.current = setTimeout(() => setConfirmingReplace(false), 4000);
+        } else {
+            if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+            executeReplaceAll();
+        }
+    }, [confirmingReplace, replaceTerm, executeReplaceAll]);
 
-    useEffect(() => { return () => { if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current); }; }, []);
+    const handleReplaceWithKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleReplaceAllClick(); }
+    }, [handleReplaceAllClick]);
+
+    useEffect(() => { return () => { 
+        if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current);
+        if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    }; }, []);
 
     const [history, setHistory] = useState<string[]>([]);
     const isInternalUpdate = useRef(false);
@@ -407,9 +427,9 @@ function ChangeLyricsPageContent() {
                                     onKeyDown={handleReplaceWithKeyDown}
                                     placeholder="Replace with…"
                                     className="w-full h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:border-black/20 transition-all" />
-                                <button type="button" onClick={executeReplaceAll}
-                                    className="w-full h-14 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors">
-                                    Replace all
+                                <button type="button" onClick={handleReplaceAllClick}
+                                    className={`w-full h-14 rounded-2xl text-white text-base font-semibold transition-all ${confirmingReplace ? 'bg-orange-600 hover:bg-orange-700' : 'bg-[#8b1a1a] hover:bg-[#7a1616]'}`}>
+                                    {confirmingReplace ? '⚠ Tap again to confirm replace all' : 'Replace all'}
                                 </button>
                             </div>
                         </div>
