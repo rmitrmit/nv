@@ -303,7 +303,7 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        <main className="bg-[#f0ede8]">
+        <main className="h-screen overflow-y-auto bg-[#f0ede8]">
 
             {/* Non-sticky step badge */}
             {!isLoading && (
@@ -316,7 +316,7 @@ function ChangeLyricsPageContent() {
 
             {/* Sticky word count + cost bar */}
             {!isLoading && (
-                <div className="bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
+                <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
                     <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
                         <div className="relative group flex items-center gap-3">
                             <p className="text-base font-semibold text-black/50">
@@ -445,8 +445,8 @@ function ChangeLyricsPageContent() {
 
             {/* Fixed bottom bar — undo/reset + nav */}
             {!isLoading && !isError && (
-                <div className="w-full">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 flex flex-col gap-2">
+                <div className="fixed bottom-0 left-0 right-0">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2">
                         {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
@@ -483,7 +483,7 @@ function ChangeLyricsPageContent() {
             )}
 
             {/* Spacer for fixed button */}
-            <div className="h-36" />
+            <div className="h-44" />
         </main>
     );
 }

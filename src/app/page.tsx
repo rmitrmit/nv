@@ -65,7 +65,7 @@ export default function LyricChangerPage() {
     };
 
     return (
-        <main className="bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans pb-32">
+        <main className="h-screen overflow-y-auto bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans">
 
             {/* Step label */}
             <div className="mt-14 mb-12">
@@ -154,7 +154,7 @@ export default function LyricChangerPage() {
             </div>
 
             {/* Bottom fixed Next button */}
-            <div className="w-full flex justify-center px-5 pb-8 pt-4">
+            <div className="fixed bottom-0 left-0 right-0 flex justify-center px-5 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/90 to-transparent">
                 <button
                     type="button"
                     disabled={!selectedSong || isButtonLoading}
@@ -167,6 +167,7 @@ export default function LyricChangerPage() {
 
             {/* Spacer so content isn't hidden behind fixed button */}
             
+                    <div className="h-28" />
         </main>
     );
 }

@@ -118,7 +118,7 @@ function OrderReviewPageContent() {
     };
 
     return (
-        <main className="bg-[#f0ede8] font-sans">
+        <main className="h-screen overflow-y-auto bg-[#f0ede8] font-sans">
 
             {/* Non-sticky step badge */}
             <div className="flex justify-center pt-10 pb-2">
@@ -128,7 +128,7 @@ function OrderReviewPageContent() {
             </div>
 
             {/* Sticky total bar */}
-            <div className="bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
+            <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
                 <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
                     <p className="text-base font-semibold text-black/50">
                         {distinctChangedWords.length} {distinctChangedWords.length === 1 ? 'word' : 'words'} changed
@@ -266,8 +266,8 @@ function OrderReviewPageContent() {
             </div>
 
             {/* Fixed bottom bar */}
-            <div className="w-full">
-                <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 flex flex-col gap-2">
+            <div className="fixed bottom-0 left-0 right-0">
+                <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2">
                     <div className="flex gap-3">
                         <a href="/change-lyrics"
                             className="h-14 px-6 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
@@ -290,6 +290,7 @@ function OrderReviewPageContent() {
             </div>
 
             
+                    <div className="h-28" />
         </main>
     );
 }
