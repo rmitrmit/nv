@@ -5,9 +5,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { Check, ChevronRight, PackageCheck } from 'lucide-react';
 import React from "react";
 import { toast } from "sonner";
-import { getDistinctChangedWords } from '../change-lyrics/utils';
-
-type ProductOption = {
+import { getDistinctChangedWords, type LyricLine } from '../change-lyrics/utils';
     id: string;
     title: string;
     description: string;
@@ -17,13 +15,6 @@ type ProductOption = {
     type: "delivery" | "addon";
 };
 
-export type LyricLine = {
-    id: number;
-    original: string;
-    modified: string;
-    markedText?: string;
-    wordChanges: unknown[];
-};
 
 function OrderReviewPageContent() {
     const [songTitle, setSongTitle] = useState("");
