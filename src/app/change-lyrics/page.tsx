@@ -303,7 +303,7 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        <main className="min-h-screen bg-[#f0ede8]">
+        <main className="bg-[#f0ede8]">
 
             {/* Non-sticky step badge */}
             {!isLoading && (
@@ -483,7 +483,7 @@ function ChangeLyricsPageContent() {
             )}
 
             {/* Spacer for fixed button */}
-            <div className="h-44" />
+            <div className="h-36" />
         </main>
     );
 }

@@ -118,7 +118,7 @@ function OrderReviewPageContent() {
     };
 
     return (
-        <main className="min-h-screen bg-[#f0ede8] font-sans">
+        <main className="bg-[#f0ede8] font-sans">
 
             {/* Non-sticky step badge */}
             <div className="flex justify-center pt-10 pb-2">
@@ -289,7 +289,7 @@ function OrderReviewPageContent() {
                 </div>
             </div>
 
-            <div className="h-28" />
+            
         </main>
     );
 }

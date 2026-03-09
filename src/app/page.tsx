@@ -65,7 +65,7 @@ export default function LyricChangerPage() {
     };
 
     return (
-        <main className="min-h-screen bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans">
+        <main className="bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans pb-32">
 
             {/* Step label */}
             <div className="mt-14 mb-12">
@@ -166,7 +166,7 @@ export default function LyricChangerPage() {
             </div>
 
             {/* Spacer so content isn't hidden behind fixed button */}
-            <div className="h-28" />
+            
         </main>
     );
 }
