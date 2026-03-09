@@ -307,7 +307,7 @@ function ChangeLyricsPageContent() {
 
             {/* Top bar — always visible, flex-shrink-0 */}
             {!isLoading && (
-                <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6">
+                <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6 pt-safe">
                     <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0">
@@ -414,16 +414,16 @@ function ChangeLyricsPageContent() {
                         {/* Replace all */}
                         <div className="flex flex-col gap-3">
                             <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Batch Replace</label>
-                            <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="flex flex-col gap-3">
                                 <input type="text" value={replaceTerm} onChange={e => setReplaceTerm(e.target.value)}
                                     placeholder="Word to replace…"
-                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
+                                    className="w-full h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:border-black/20 transition-all" />
                                 <input type="text" value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
                                     onKeyDown={handleReplaceWithKeyDown}
                                     placeholder="Replace with…"
-                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
+                                    className="w-full h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:border-black/20 transition-all" />
                                 <button type="button" onClick={executeReplaceAll}
-                                    className="h-14 px-7 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors whitespace-nowrap">
+                                    className="w-full h-14 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors">
                                     Replace all
                                 </button>
                             </div>
