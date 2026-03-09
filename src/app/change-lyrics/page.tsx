@@ -303,21 +303,15 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        <main className="h-screen overflow-y-auto bg-[#f0ede8]">
+        <main className="h-screen flex flex-col bg-[#f0ede8]">
 
-            {/* Non-sticky step badge */}
+            {/* Top bar — always visible, flex-shrink-0 */}
             {!isLoading && (
-                <div className="flex justify-center pt-10 pb-2">
-                    <span className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-5 py-2 bg-[#8b1a1a]/5">
-                        Step 2 of 3
-                    </span>
-                </div>
-            )}
-
-            {/* Sticky word count + cost bar */}
-            {!isLoading && (
-                <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
+                <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-3">
+                        <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0">
+                            Step 2 of 3
+                        </span>
                         <div className="relative group flex items-center gap-3">
                             <p className="text-base font-semibold text-black/50">
                                 {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
@@ -347,7 +341,7 @@ function ChangeLyricsPageContent() {
                 </div>
             )}
 
-            <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pt-6 pb-14 flex flex-col gap-10 items-center">
+            <div className="flex-1 overflow-y-auto"><div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pt-6 pb-6 flex flex-col gap-6 items-center">
 
                 {/* Page heading + song info */}
                 <div className="w-full text-center">
@@ -385,7 +379,7 @@ function ChangeLyricsPageContent() {
                             <LyricsEditor
                                 value={formValues.lyrics}
                                 originalValue={originalLyricsText}
-                                className="min-h-[520px] w-full rounded-2xl border border-black/10 bg-white px-6 py-5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/5 text-lg text-black leading-relaxed whitespace-pre-wrap overflow-y-auto shadow-sm text-center"
+                                className="min-h-[200px] w-full rounded-2xl border border-black/10 bg-white px-6 py-5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/5 text-lg text-black leading-relaxed whitespace-pre-wrap overflow-y-auto shadow-sm text-center"
                                 onChange={(newText) => {
                                     setFormValues(prev => ({ ...prev, lyrics: newText }));
                                     setLyrics(prevLyrics => {
@@ -441,12 +435,12 @@ function ChangeLyricsPageContent() {
 
                     </div>
                 )}
-            </div>
+            </div></div>
 
-            {/* Fixed bottom bar — undo/reset + nav */}
+            {/* Bottom bar — always visible, flex-shrink-0 */}
             {!isLoading && !isError && (
-                <div className="fixed bottom-0 left-0 right-0">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2">
+                <div className="flex-shrink-0">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-6 pt-3 bg-[#f0ede8] border-t border-black/6 flex flex-col gap-2">
                         {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
@@ -482,8 +476,6 @@ function ChangeLyricsPageContent() {
                 </div>
             )}
 
-            {/* Spacer for fixed button */}
-            <div className="h-44" />
         </main>
     );
 }

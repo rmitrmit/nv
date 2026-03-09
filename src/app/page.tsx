@@ -65,17 +65,18 @@ export default function LyricChangerPage() {
     };
 
     return (
-        <main className="h-screen overflow-y-auto bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans">
+        <main className="h-screen flex flex-col bg-[#f0ede8] font-sans">
 
-            {/* Step label */}
-            <div className="mt-14 mb-12">
+            {/* Top */}
+            <div className="flex-shrink-0 flex flex-col items-center pt-8 pb-4">
                 <span className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-5 py-2 bg-[#8b1a1a]/5">
                     Step 1 of 3
                 </span>
             </div>
 
-            {/* Heading */}
-            <div className="w-full max-w-3xl text-center mb-12">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-6 md:px-16 lg:px-24">
+            <div className="w-full max-w-3xl mx-auto text-center mb-8 mt-6">
                 <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight leading-tight">
                     Choose a song
                 </h1>
@@ -84,8 +85,7 @@ export default function LyricChangerPage() {
                 </p>
             </div>
 
-            {/* Content */}
-            <div className="w-full max-w-3xl flex flex-col gap-6">
+            <div className="w-full max-w-3xl mx-auto flex flex-col gap-6">
 
                 {/* Search — hide once song picked */}
                 {!selectedSong && (
@@ -152,9 +152,10 @@ export default function LyricChangerPage() {
                     </div>
                 )}
             </div>
+            </div>
 
-            {/* Bottom fixed Next button */}
-            <div className="fixed bottom-0 left-0 right-0 flex justify-center px-5 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/90 to-transparent">
+            {/* Bottom button */}
+            <div className="flex-shrink-0 flex justify-center px-5 pb-6 pt-3 bg-[#f0ede8] border-t border-black/6">
                 <button
                     type="button"
                     disabled={!selectedSong || isButtonLoading}

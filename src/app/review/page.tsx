@@ -118,18 +118,19 @@ function OrderReviewPageContent() {
     };
 
     return (
-        <main className="h-screen overflow-y-auto bg-[#f0ede8] font-sans">
+        <main className="h-screen flex flex-col bg-[#f0ede8] font-sans">
 
-            {/* Non-sticky step badge */}
-            <div className="flex justify-center pt-10 pb-2">
+            {/* Top bar */}
+            <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6 px-6 py-3 flex flex-col items-center gap-1">
+                <div className="flex justify-center">
                 <span className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-5 py-2 bg-[#8b1a1a]/5">
                     Step 3 of 3
                 </span>
             </div>
 
             {/* Sticky total bar */}
-            <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
-                <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
+            <div>
+                <div className="flex items-center justify-center gap-3 h-10">
                     <p className="text-base font-semibold text-black/50">
                         {distinctChangedWords.length} {distinctChangedWords.length === 1 ? 'word' : 'words'} changed
                     </p>
@@ -138,7 +139,8 @@ function OrderReviewPageContent() {
                 </div>
             </div>
 
-            <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pt-6 pb-14 flex flex-col gap-8 items-center">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto"><div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pt-6 pb-6 flex flex-col gap-6 items-center">
 
                 {/* Heading + song info */}
                 <div className="w-full text-center">
@@ -265,9 +267,11 @@ function OrderReviewPageContent() {
                 </div>
             </div>
 
-            {/* Fixed bottom bar */}
-            <div className="fixed bottom-0 left-0 right-0">
-                <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2">
+            </div></div>
+
+            {/* Bottom bar */}
+            <div className="flex-shrink-0">
+                <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-6 pt-3 px-6 md:px-12 lg:px-20 bg-[#f0ede8] border-t border-black/6 flex flex-col gap-2 mx-auto max-w-5xl w-full">
                     <div className="flex gap-3">
                         <a href="/change-lyrics"
                             className="h-14 px-6 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
@@ -290,8 +294,7 @@ function OrderReviewPageContent() {
             </div>
 
             
-                    <div className="h-28" />
-        </main>
+                </main>
     );
 }
 
