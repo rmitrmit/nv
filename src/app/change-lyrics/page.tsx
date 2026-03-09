@@ -309,18 +309,20 @@ function ChangeLyricsPageContent() {
             {!isLoading && (
                 <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6">
                     <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-3">
-                        <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0">
-                            Step 2 of 3
-                        </span>
-                        <div className="relative group flex items-center gap-3">
-                            <p className="text-base font-semibold text-black/50">
-                                {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
-                            </p>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0">
+                                Step 2 of 3
+                            </span>
                             <div className="w-px h-4 bg-black/10" />
-                            <div className="flex items-center gap-1 cursor-help">
-                                <p className="text-base font-bold text-[#8b1a1a]">US${cost}</p>
-                                <Info className="size-4 text-[#8b1a1a]/50" />
-                            </div>
+                            <div className="relative group flex items-center gap-3">
+                                <p className="text-sm font-semibold text-black/50">
+                                    {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
+                                </p>
+                                <div className="w-px h-4 bg-black/10" />
+                                <div className="flex items-center gap-1 cursor-help">
+                                    <p className="text-sm font-bold text-[#8b1a1a]">US${cost}</p>
+                                    <Info className="size-3.5 text-[#8b1a1a]/50" />
+                                </div>
                             {/* Pricing tooltip */}
                             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 p-4 bg-white border border-black/8 rounded-2xl shadow-xl opacity-0 translate-y-1  transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50 text-left">
                                 <p className="text-sm font-bold text-black mb-3">Pricing tiers</p>
@@ -335,8 +337,18 @@ function ChangeLyricsPageContent() {
                                         </li>
                                     ))}
                                 </ul>
+                                </div>
                             </div>
                         </div>
+                        {/* Review Order button — right side */}
+                        <button
+                            type="button"
+                            disabled={loadingButton !== null}
+                            onClick={handleNextStep}
+                            className="flex-shrink-0 h-10 px-4 rounded-2xl bg-[#8b1a1a] text-white text-sm font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                            {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-3.5" /></>}
+                        </button>
                     </div>
                 </div>
             )}
@@ -401,7 +413,7 @@ function ChangeLyricsPageContent() {
 
                         {/* Replace all */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Find & Replace</label>
+                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Batch Replace</label>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <input type="text" value={replaceTerm} onChange={e => setReplaceTerm(e.target.value)}
                                     placeholder="Word to replace…"
@@ -457,20 +469,12 @@ function ChangeLyricsPageContent() {
                                 <Eraser className="size-4" /> Reset all
                             </button>
                         </div>
-                        {/* Back + Review */}
+                        {/* Back */}
                         <div className="flex gap-3">
                             <Link href="/"
-                                className="h-14 px-6 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
+                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
                                 ← Back
                             </Link>
-                            <button
-                                type="button"
-                                disabled={loadingButton !== null}
-                                onClick={handleNextStep}
-                                className="flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled: transition-all flex items-center justify-center gap-2 shadow-md"
-                            >
-                                {loadingButton === 'review' ? 'Processing…' : <>Review Order — <span className="font-bold">US${cost}</span> <ChevronRight className="size-4" /></>}
-                            </button>
                         </div>
                     </div>
                 </div>
