@@ -11,7 +11,17 @@ import { toast } from 'sonner';
 import { handleReplaceAll, LyricLine, getDistinctChangedWords, generateLyricsData, CheckoutData, reconstructLyricsFromCheckout } from './utils';
 import { ExternalLyricsResponse } from '../api/lyrics/route';
 
+// 1. Import and configure Roboto
+import { Roboto } from 'next/font/google';
+
+const roboto = Roboto({
+    subsets: ['latin'],
+    weight: ['400', '500', '700'],
+    display: 'swap',
+});
+
 function ChangeLyricsPageContent() {
+    // ... (rest of your state and logic remains exactly the same)
     const searchParams = useSearchParams();
     const [songId, setSongId] = useState<string | null>(searchParams.get('id'));
     const [songTitle, setSongTitle] = useState<string | null>(searchParams.get('title'));
@@ -305,23 +315,21 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        <main className="h-screen flex flex-col bg-[#f0ede8]">
+        /* 2. Apply font class to main */
+        <main className={`${roboto.className} h-screen flex flex-col bg-[#f0ede8]`}>
 
             {/* Top bar — always visible, flex-shrink-0 */}
             {!isLoading && (
                 <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6 pt-safe">
                     <div className="mx-auto max-w-5xl px-4 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-2">
-                        {/* Left: step badge — hidden on mobile */}
                         <span className="hidden sm:inline-flex text-xs font-bold tracking-[0.15em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-3 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0 whitespace-nowrap">
                             Step 2 of 3
                         </span>
 
-                        {/* Word count — always visible */}
                         <p className="text-sm font-semibold text-black/40 flex-shrink-0">
                             {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
                         </p>
 
-                        {/* Right: Review button with cost baked in */}
                         <button
                             type="button"
                             disabled={loadingButton !== null}
@@ -338,7 +346,6 @@ function ChangeLyricsPageContent() {
 
                 {/* Page heading + song info */}
                 <div className="w-full text-center">
-                    {/* Step badge — visible on mobile only, in content flow */}
                     <div className="flex justify-center mb-4 sm:hidden">
                         <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5">
                             Step 2 of 3
@@ -394,8 +401,6 @@ function ChangeLyricsPageContent() {
                                     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); handleUndo(); }
                                 }}
                             />
-
-
                         </div>
 
                         {/* Replace all */}
@@ -440,10 +445,9 @@ function ChangeLyricsPageContent() {
             {!isLoading && !isError && (
                 <div className="flex-shrink-0">
                     <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-6 pt-3 bg-[#f0ede8] border-t border-black/6 flex flex-col gap-2">
-                        {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
-                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 disabled:opacity-25 disabled: transition-all flex items-center justify-center gap-2 shadow-sm">
+                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 disabled:opacity-25 transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <RotateCcw className="size-4" /> Undo
                             </button>
                             <button type="button"
@@ -452,7 +456,6 @@ function ChangeLyricsPageContent() {
                                 <Eraser className="size-4" /> Reset all
                             </button>
                         </div>
-                        {/* Back */}
                         <div className="flex gap-3">
                             <Link href="/"
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
@@ -465,7 +468,7 @@ function ChangeLyricsPageContent() {
 
             {/* Reset All confirmation modal */}
             {showResetConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowResetConfirm(false)}>
+                <div className={`${roboto.className} fixed inset-0 z-50 flex items-center justify-center px-6`} onClick={() => setShowResetConfirm(false)}>
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
                     <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-1">
