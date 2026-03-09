@@ -696,10 +696,13 @@ export function handleReplaceAll(
             }
 
             const isCJKLine = containsCJK(newModified);
+            // Use Unicode-aware boundaries instead of \b so accented/special chars (e.g. "ï") match correctly
+            const uBefore = '(?<![\\w\u00C0-\u024F])';
+            const uAfter = '(?![\\w\u00C0-\u024F])';
             const patternForBase = isCJKLine
                 ? new RegExp(escapedTermWord, 'g')
                 : new RegExp(
-                    `\\b${escapedTermWord}\\b${termPunct ? `(?!${escapeRegExp(termPunct)})` : ''}`,
+                    `${uBefore}${escapedTermWord}${uAfter}${termPunct ? `(?!${escapeRegExp(termPunct)})` : ''}`,
                     'gi'
                 );
 
@@ -763,7 +766,7 @@ export function handleReplaceAll(
 
     setTimeout(() => {
         if (totalReplacements > 0) {
-            toast?.success(`Replaced ${totalReplacements} word(s) of "${replaceTerm}" with "${replaceWith}"`);
+            toast?.success(`Replaced all "${replaceTerm}" with "${replaceWith}"`);
         } else {
             toast?.info(`"${replaceTerm}" not found`);
         }
