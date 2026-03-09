@@ -65,7 +65,7 @@ export default function LyricChangerPage() {
     };
 
     return (
-        <main className="h-screen overflow-y-auto bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans pb-32">
+        <main className="bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans pb-32">
 
             {/* Step label */}
             <div className="mt-14 mb-12">
@@ -154,12 +154,12 @@ export default function LyricChangerPage() {
             </div>
 
             {/* Bottom fixed Next button */}
-            <div className="fixed bottom-0 left-0 right-0 flex justify-center px-5 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/90 to-transparent pointer-events-none">
+            <div className="w-full flex justify-center px-5 pb-8 pt-4">
                 <button
                     type="button"
                     disabled={!selectedSong || isButtonLoading}
                     onClick={handleNext}
-                    className="pointer-events-auto w-full max-w-3xl h-16 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold disabled:opacity-25 disabled:pointer-events-none hover:bg-[#7a1616] transition-all shadow-lg"
+                    className="w-full max-w-3xl h-16 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold disabled:opacity-25 disabled: hover:bg-[#7a1616] transition-all shadow-lg"
                 >
                     {isButtonLoading ? 'Loading…' : 'Next'}
                 </button>

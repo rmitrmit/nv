@@ -303,7 +303,7 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        <main className="h-screen overflow-y-auto bg-[#f0ede8]">
+        <main className="bg-[#f0ede8]">
 
             {/* Non-sticky step badge */}
             {!isLoading && (
@@ -316,7 +316,7 @@ function ChangeLyricsPageContent() {
 
             {/* Sticky word count + cost bar */}
             {!isLoading && (
-                <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
+                <div className="bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
                     <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
                         <div className="relative group flex items-center gap-3">
                             <p className="text-base font-semibold text-black/50">
@@ -328,7 +328,7 @@ function ChangeLyricsPageContent() {
                                 <Info className="size-4 text-[#8b1a1a]/50" />
                             </div>
                             {/* Pricing tooltip */}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 p-4 bg-white border border-black/8 rounded-2xl shadow-xl opacity-0 translate-y-1 pointer-events-none transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50 text-left">
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 p-4 bg-white border border-black/8 rounded-2xl shadow-xl opacity-0 translate-y-1  transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50 text-left">
                                 <p className="text-sm font-bold text-black mb-3">Pricing tiers</p>
                                 <ul className="space-y-1.5 text-sm text-black/60">
                                     {[['1–3 words', '45', totalWordChanges <= 3 && totalWordChanges > 0],
@@ -445,12 +445,12 @@ function ChangeLyricsPageContent() {
 
             {/* Fixed bottom bar — undo/reset + nav */}
             {!isLoading && !isError && (
-                <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2 pointer-events-auto">
+                <div className="w-full">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 flex flex-col gap-2">
                         {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
-                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 disabled:opacity-25 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-sm">
+                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 disabled:opacity-25 disabled: transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <RotateCcw className="size-4" /> Undo
                             </button>
                             <button type="button"
@@ -473,7 +473,7 @@ function ChangeLyricsPageContent() {
                                 type="button"
                                 disabled={loadingButton !== null}
                                 onClick={handleNextStep}
-                                className="flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md"
+                                className="flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled: transition-all flex items-center justify-center gap-2 shadow-md"
                             >
                                 {loadingButton === 'review' ? 'Processing…' : <>Review Order — <span className="font-bold">US${cost}</span> <ChevronRight className="size-4" /></>}
                             </button>
@@ -491,7 +491,7 @@ function ChangeLyricsPageContent() {
 export default function ChangeLyricsPage() {
     return (
         <Suspense fallback={
-            <div className="flex items-center justify-center h-screen bg-[#f0ede8]">
+            <div className="flex items-center justify-center py-20 bg-[#f0ede8]">
                 <div className="w-8 h-8 border-2 border-black/10 border-t-black/50 rounded-full animate-spin" />
             </div>
         }>
