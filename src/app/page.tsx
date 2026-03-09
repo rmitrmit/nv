@@ -65,7 +65,7 @@ export default function LyricChangerPage() {
     };
 
     return (
-        <main className="bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans pb-32">
+        <main className="h-screen overflow-y-auto bg-[#f0ede8] flex flex-col items-center px-6 md:px-16 lg:px-24 font-sans pb-32">
 
             {/* Step label */}
             <div className="mt-14 mb-12">

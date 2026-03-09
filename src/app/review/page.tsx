@@ -118,7 +118,7 @@ function OrderReviewPageContent() {
     };
 
     return (
-        <main className="bg-[#f0ede8] font-sans">
+        <main className="h-screen overflow-y-auto bg-[#f0ede8] font-sans">
 
             {/* Non-sticky step badge */}
             <div className="flex justify-center pt-10 pb-2">

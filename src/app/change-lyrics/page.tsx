@@ -303,7 +303,7 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        <main className="bg-[#f0ede8]">
+        <main className="h-screen overflow-y-auto bg-[#f0ede8]">
 
             {/* Non-sticky step badge */}
             {!isLoading && (
