@@ -308,44 +308,23 @@ function ChangeLyricsPageContent() {
             {/* Top bar — always visible, flex-shrink-0 */}
             {!isLoading && (
                 <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6 pt-safe">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0">
-                                Step 2 of 3
-                            </span>
-                            <div className="w-px h-4 bg-black/10" />
-                            <div className="relative group flex items-center gap-3">
-                                <p className="text-sm font-semibold text-black/50">
-                                    {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
-                                </p>
-                                <div className="w-px h-4 bg-black/10" />
-                                <div className="flex items-center gap-1 cursor-help">
-                                    <p className="text-sm font-bold text-[#8b1a1a]">US${cost}</p>
-                                    <Info className="size-3.5 text-[#8b1a1a]/50" />
-                                </div>
-                            {/* Pricing tooltip */}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 p-4 bg-white border border-black/8 rounded-2xl shadow-xl opacity-0 translate-y-1  transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50 text-left">
-                                <p className="text-sm font-bold text-black mb-3">Pricing tiers</p>
-                                <ul className="space-y-1.5 text-sm text-black/60">
-                                    {[['1–3 words', '45', totalWordChanges <= 3 && totalWordChanges > 0],
-                                      ['4–10 words', '85', totalWordChanges > 3 && totalWordChanges <= 10],
-                                      ['11–20 words', '125', totalWordChanges > 10 && totalWordChanges <= 20],
-                                      ['20+ words', '165', totalWordChanges > 20]
-                                    ].map(([label, price, active]) => (
-                                        <li key={label as string} className={`flex justify-between px-2 py-1 rounded-lg ${active ? 'bg-[#8b1a1a]/8 text-[#8b1a1a] font-semibold' : ''}`}>
-                                            <span>{label as string}</span><span>US${price as string}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Review Order button — right side */}
+                    <div className="mx-auto max-w-5xl px-4 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-2">
+                        {/* Left: step badge */}
+                        <span className="text-xs font-bold tracking-[0.15em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-3 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0 whitespace-nowrap">
+                            Step 2 of 3
+                        </span>
+
+                        {/* Center: word count — hidden on small mobile */}
+                        <p className="hidden sm:block text-sm font-semibold text-black/40 flex-shrink-0">
+                            {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
+                        </p>
+
+                        {/* Right: Review button with cost baked in */}
                         <button
                             type="button"
                             disabled={loadingButton !== null}
                             onClick={handleNextStep}
-                            className="flex-shrink-0 h-10 px-4 rounded-2xl bg-[#8b1a1a] text-white text-sm font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1.5 shadow-sm"
+                            className="flex-shrink-0 h-10 px-4 rounded-2xl bg-[#8b1a1a] text-white text-sm font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
                         >
                             {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-3.5" /></>}
                         </button>
