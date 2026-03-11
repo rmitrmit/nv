@@ -455,11 +455,7 @@ function ChangeLyricsPageContent() {
                                 <RotateCcw className="size-4" /> Undo
                             </button>
                             <button type="button"
-                                onClick={() => {
-                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
-                                    setLyrics(generateLyricsData(originalLyricsText));
-                                    toast.success("Reset to original lyrics");
-                                }}
+                                onClick={() => setShowResetConfirm(true)}
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <Eraser className="size-4" /> Reset all
                             </button>
@@ -487,6 +483,37 @@ function ChangeLyricsPageContent() {
 
             {/* Spacer for fixed button */}
             <div className="h-44" />
+            {/* Reset All confirmation modal */}
+            {showResetConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowResetConfirm(false)}>
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+                    <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-lg font-bold text-black">Reset all lyrics?</h3>
+                            <p className="text-sm text-black/50">This will undo all your changes and restore the original lyrics. This cannot be undone.</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowResetConfirm(false)}
+                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black transition-all">
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
+                                    setLyrics(generateLyricsData(originalLyricsText));
+                                    setShowResetConfirm(false);
+                                    toast.success("Reset to original lyrics");
+                                }}
+                                className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-all">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Back confirmation modal */}
             {showBackConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowBackConfirm(false)}>
