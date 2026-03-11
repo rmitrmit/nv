@@ -3,7 +3,6 @@
 
 import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Info, ChevronRight, Eraser, RotateCcw } from 'lucide-react';
 import React from 'react';
 import LyricsEditor from '@/components/LyricsEditor';
@@ -11,17 +10,7 @@ import { toast } from 'sonner';
 import { handleReplaceAll, LyricLine, getDistinctChangedWords, generateLyricsData, CheckoutData, reconstructLyricsFromCheckout } from './utils';
 import { ExternalLyricsResponse } from '../api/lyrics/route';
 
-// 1. Import and configure Roboto
-import { Roboto } from 'next/font/google';
-
-const roboto = Roboto({
-    subsets: ['latin'],
-    weight: ['400', '500', '700'],
-    display: 'swap',
-});
-
 function ChangeLyricsPageContent() {
-    // ... (rest of your state and logic remains exactly the same)
     const searchParams = useSearchParams();
     const [songId, setSongId] = useState<string | null>(searchParams.get('id'));
     const [songTitle, setSongTitle] = useState<string | null>(searchParams.get('title'));
@@ -261,8 +250,8 @@ function ChangeLyricsPageContent() {
     };
 
     const replaceAllTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [showBackConfirm, setShowBackConfirm] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
-
     const executeReplaceAll = useCallback(() => {
         if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current);
         const cleanReplaceTerm = replaceTerm.trim();
@@ -315,42 +304,54 @@ function ChangeLyricsPageContent() {
     }, [history]);
 
     return (
-        /* 2. Apply font class to main */
-        <main className={`${roboto.className} h-screen flex flex-col bg-[#f0ede8]`}>
+        <main className="min-h-screen bg-[#f0ede8]">
 
-            {/* Top bar — always visible, flex-shrink-0 */}
+            {/* Non-sticky step badge */}
             {!isLoading && (
-                <div className="flex-shrink-0 bg-[#f0ede8] border-b border-black/6 pt-safe">
-                    <div className="mx-auto max-w-5xl px-4 md:px-12 lg:px-20 h-14 flex items-center justify-between gap-2">
-                        <span className="hidden sm:inline-flex text-xs font-bold tracking-[0.15em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-3 py-1.5 bg-[#8b1a1a]/5 flex-shrink-0 whitespace-nowrap">
-                            Step 2 of 3
-                        </span>
+                <div className="flex justify-center pt-10 pb-2">
+                    <span className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-5 py-2 bg-[#8b1a1a]/5">
+                        Step 2 of 3
+                    </span>
+                </div>
+            )}
 
-                        <p className="text-sm font-semibold text-black/40 flex-shrink-0">
-                            {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
-                        </p>
-
-                        <button
-                            type="button"
-                            disabled={loadingButton !== null}
-                            onClick={handleNextStep}
-                            className="flex-shrink-0 h-10 px-4 rounded-2xl bg-[#8b1a1a] text-white text-sm font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-                        >
-                            {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-3.5" /></>}
-                        </button>
+            {/* Sticky word count + cost bar */}
+            {!isLoading && (
+                <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
+                        <div className="relative group flex items-center gap-3">
+                            <p className="text-base font-semibold text-black/50">
+                                {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
+                            </p>
+                            <div className="w-px h-4 bg-black/10" />
+                            <div className="flex items-center gap-1 cursor-help">
+                                <p className="text-base font-bold text-[#8b1a1a]">US${cost}</p>
+                                <Info className="size-4 text-[#8b1a1a]/50" />
+                            </div>
+                            {/* Pricing tooltip */}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 p-4 bg-white border border-black/8 rounded-2xl shadow-xl opacity-0 translate-y-1 pointer-events-none transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50 text-left">
+                                <p className="text-sm font-bold text-black mb-3">Pricing tiers</p>
+                                <ul className="space-y-1.5 text-sm text-black/60">
+                                    {[['1–3 words', '45', totalWordChanges <= 3 && totalWordChanges > 0],
+                                      ['4–10 words', '85', totalWordChanges > 3 && totalWordChanges <= 10],
+                                      ['11–20 words', '125', totalWordChanges > 10 && totalWordChanges <= 20],
+                                      ['20+ words', '165', totalWordChanges > 20]
+                                    ].map(([label, price, active]) => (
+                                        <li key={label as string} className={`flex justify-between px-2 py-1 rounded-lg ${active ? 'bg-[#8b1a1a]/8 text-[#8b1a1a] font-semibold' : ''}`}>
+                                            <span>{label as string}</span><span>US${price as string}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto"><div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pt-6 pb-6 flex flex-col gap-6 items-center">
+            <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pt-6 pb-14 flex flex-col gap-10 items-center">
 
                 {/* Page heading + song info */}
                 <div className="w-full text-center">
-                    <div className="flex justify-center mb-4 sm:hidden">
-                        <span className="text-xs font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-4 py-1.5 bg-[#8b1a1a]/5">
-                            Step 2 of 3
-                        </span>
-                    </div>
                     <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight mb-2">Edit your lyrics</h1>
                     {(songTitle || songArtist) && (
                         <div className="flex items-center gap-3 mt-5 p-4 bg-white rounded-2xl border border-black/8 shadow-sm justify-center">
@@ -381,11 +382,11 @@ function ChangeLyricsPageContent() {
 
                         {/* Lyrics editor */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Edit your desired lyrics below</label>
+                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Lyrics</label>
                             <LyricsEditor
                                 value={formValues.lyrics}
                                 originalValue={originalLyricsText}
-                                className="min-h-[200px] w-full rounded-2xl border border-black/10 bg-white px-6 py-5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/5 text-lg text-black leading-relaxed whitespace-pre-wrap overflow-y-auto shadow-sm text-center"
+                                className="min-h-[520px] w-full rounded-2xl border border-black/10 bg-white px-6 py-5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/5 text-lg text-black leading-relaxed whitespace-pre-wrap overflow-y-auto shadow-sm text-center"
                                 onChange={(newText) => {
                                     setFormValues(prev => ({ ...prev, lyrics: newText }));
                                     setLyrics(prevLyrics => {
@@ -401,21 +402,23 @@ function ChangeLyricsPageContent() {
                                     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); handleUndo(); }
                                 }}
                             />
+
+
                         </div>
 
                         {/* Replace all */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Batch Replace</label>
-                            <div className="flex flex-col gap-3">
+                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Find & Replace</label>
+                            <div className="flex flex-col sm:flex-row gap-2">
                                 <input type="text" value={replaceTerm} onChange={e => setReplaceTerm(e.target.value)}
                                     placeholder="Word to replace…"
-                                    className="w-full h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:border-black/20 transition-all" />
+                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
                                 <input type="text" value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
                                     onKeyDown={handleReplaceWithKeyDown}
                                     placeholder="Replace with…"
-                                    className="w-full h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:border-black/20 transition-all" />
+                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
                                 <button type="button" onClick={executeReplaceAll}
-                                    className="w-full h-14 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors">
+                                    className="h-14 px-7 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors whitespace-nowrap">
                                     Replace all
                                 </button>
                             </div>
@@ -439,66 +442,72 @@ function ChangeLyricsPageContent() {
 
                     </div>
                 )}
-            </div></div>
+            </div>
 
-            {/* Bottom bar — always visible, flex-shrink-0 */}
+            {/* Fixed bottom bar — undo/reset + nav */}
             {!isLoading && !isError && (
-                <div className="flex-shrink-0">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-6 pt-3 bg-[#f0ede8] border-t border-black/6 flex flex-col gap-2">
+                <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2 pointer-events-auto">
+                        {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
-                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 disabled:opacity-25 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 disabled:opacity-25 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <RotateCcw className="size-4" /> Undo
                             </button>
                             <button type="button"
-                                onClick={() => setShowResetConfirm(true)}
+                                onClick={() => {
+                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
+                                    setLyrics(generateLyricsData(originalLyricsText));
+                                    toast.success("Reset to original lyrics");
+                                }}
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <Eraser className="size-4" /> Reset all
                             </button>
                         </div>
+                        {/* Back + Review */}
                         <div className="flex gap-3">
-                            <Link href="/"
-                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
-                                ← Back
-                            </Link>
                             <button
-        type="button"
-        disabled={loadingButton !== null}
-        onClick={handleNextStep}
-        className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 shadow-sm">
-        {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-4" /></>}
-    </button>
+                                type="button"
+                                onClick={() => setShowBackConfirm(true)}
+                                className="h-14 px-6 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
+                                ← Back
+                            </button>
+                            <button
+                                type="button"
+                                disabled={loadingButton !== null}
+                                onClick={handleNextStep}
+                                className="flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md"
+                            >
+                                {loadingButton === 'review' ? 'Processing…' : <>Review Order — <span className="font-bold">US${cost}</span> <ChevronRight className="size-4" /></>}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Reset All confirmation modal */}
-            {showResetConfirm && (
-                <div className={`${roboto.className} fixed inset-0 z-50 flex items-center justify-center px-6`} onClick={() => setShowResetConfirm(false)}>
+            {/* Spacer for fixed button */}
+            <div className="h-44" />
+            {/* Back confirmation modal */}
+            {showBackConfirm && (
+                <div className={`${roboto.className} fixed inset-0 z-50 flex items-center justify-center px-6`} onClick={() => setShowBackConfirm(false)}>
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
                     <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-1">
-                            <h3 className="text-lg font-bold text-black">Reset all lyrics?</h3>
-                            <p className="text-sm text-black/50">This will undo all your changes and restore the original lyrics. This cannot be undone.</p>
+                            <h3 className="text-lg font-bold text-black">Lose your progress?</h3>
+                            <p className="text-sm text-black/50">Going back will discard all your lyric edits. This cannot be undone.</p>
                         </div>
                         <div className="flex gap-3">
                             <button
                                 type="button"
-                                onClick={() => setShowResetConfirm(false)}
+                                onClick={() => setShowBackConfirm(false)}
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black transition-all">
-                                Cancel
+                                Keep editing
                             </button>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
-                                    setLyrics(generateLyricsData(originalLyricsText));
-                                    setShowResetConfirm(false);
-                                    toast.success("Reset to original lyrics");
-                                }}
+                                onClick={() => router.push('/')}
                                 className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-all">
-                                Reset
+                                Go back
                             </button>
                         </div>
                     </div>
@@ -511,7 +520,7 @@ function ChangeLyricsPageContent() {
 export default function ChangeLyricsPage() {
     return (
         <Suspense fallback={
-            <div className="flex items-center justify-center py-20 bg-[#f0ede8]">
+            <div className="flex items-center justify-center h-screen bg-[#f0ede8]">
                 <div className="w-8 h-8 border-2 border-black/10 border-t-black/50 rounded-full animate-spin" />
             </div>
         }>
