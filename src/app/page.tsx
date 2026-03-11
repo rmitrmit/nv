@@ -84,7 +84,7 @@ export default function LyricChangerPage() {
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-6 md:px-16 lg:px-24">
                 <div className="w-full max-w-3xl mx-auto text-center mb-12 mt-2">
-                    <h1 className="text-2xl md:text-3xl font-bold text-black tracking-tight leading-tight">
+                    <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight leading-tight">
                         Let&apos;s get your lyric change started!
                     </h1>
                     <p className="mt-5 text-base text-black/50">
