@@ -318,7 +318,7 @@ function ChangeLyricsPageContent() {
             {/* Sticky word count + cost bar */}
             {!isLoading && (
                 <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-between gap-3">
                         <div className="relative group flex items-center gap-3">
                             <p className="text-base font-semibold text-black/50">
                                 {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
@@ -344,6 +344,14 @@ function ChangeLyricsPageContent() {
                                 </ul>
                             </div>
                         </div>
+                        <button
+                            type="button"
+                            disabled={loadingButton !== null}
+                            onClick={handleNextStep}
+                            className="flex-shrink-0 h-10 px-4 rounded-2xl bg-[#8b1a1a] text-white text-sm font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                        >
+                            {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-3.5" /></>}
+                        </button>
                     </div>
                 </div>
             )}
