@@ -417,7 +417,7 @@ function ChangeLyricsPageContent() {
                         {/* Replace all */}
                         <div className="flex flex-col gap-3">
                             <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Batch replace</label>
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col sm:flex-row gap-2">
                                 <input type="text" value={replaceTerm} onChange={e => setReplaceTerm(e.target.value)}
                                     placeholder="Word to replace…"
                                     className="flex-1 h-16 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
