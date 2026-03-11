@@ -6,10 +6,8 @@ import { Search, X } from 'lucide-react';
 import React from "react";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-// 1. Import the font loader
 import { Roboto } from 'next/font/google';
 
-// 2. Configure the font
 const roboto = Roboto({
     subsets: ['latin'],
     weight: ['400', '500', '700'],
@@ -74,36 +72,35 @@ export default function LyricChangerPage() {
     };
 
     return (
-        /* 3. Apply roboto.className to the wrapper */
         <main className={`${roboto.className} h-screen flex flex-col bg-[#f0ede8]`}>
 
-            {/* Top */}
-            <div className="flex-shrink-0 flex flex-col items-center pt-8 pb-4">
-                <span className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-5 py-2 bg-[#8b1a1a]/5">
+            {/* Top step badge — more top padding */}
+            <div className="flex-shrink-0 flex flex-col items-center pt-14 pb-8">
+                <span className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] border border-[#8b1a1a]/25 rounded-full px-5 py-2.5 bg-[#8b1a1a]/5">
                     Step 1 of 3
                 </span>
             </div>
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-6 md:px-16 lg:px-24">
-                <div className="w-full max-w-3xl mx-auto text-center mb-8 mt-6">
-                    <h1 className="text-3xl md:text-4xl font-bold text-black tracking-tight leading-tight">
-                        Let's get your lyric change started!
+                <div className="w-full max-w-3xl mx-auto text-center mb-12 mt-2">
+                    <h1 className="text-4xl md:text-5xl font-bold text-black tracking-tight leading-tight">
+                        Let&apos;s get your lyric change started!
                     </h1>
-                    <p className="mt-3 text-lg text-black/50">
+                    <p className="mt-5 text-xl text-black/50">
                         Pick the song you&apos;d like to personalise.
                     </p>
                 </div>
 
-                <div className="w-full max-w-3xl mx-auto flex flex-col gap-6">
+                <div className="w-full max-w-3xl mx-auto flex flex-col gap-8 pb-8">
 
                     {/* Search — hide once song picked */}
                     {!selectedSong && (
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-4">
                             <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-[#8b1a1a]/40" />
+                                <Search className="absolute left-5 top-1/2 -translate-y-1/2 size-5 text-[#8b1a1a]/40" />
                                 <input
-                                    className="w-full h-16 pl-12 pr-10 rounded-2xl bg-white border border-black/10 text-black placeholder:text-black/30 text-lg outline-none focus:border-black/20 transition-all shadow-sm"
+                                    className="w-full h-16 pl-14 pr-10 rounded-2xl bg-white border border-black/10 text-black placeholder:text-black/30 text-lg outline-none focus:border-black/20 transition-all shadow-sm"
                                     type="text" placeholder="Search by artist or song title…"
                                     value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                                 />
@@ -121,7 +118,7 @@ export default function LyricChangerPage() {
                                 <div className="rounded-2xl bg-white border border-black/8 overflow-hidden shadow-lg max-h-72 overflow-y-auto">
                                     {searchResults.map(song => (
                                         <button key={song.id} type="button" onClick={() => handleSelectSong(song)}
-                                            className="w-full flex items-center gap-3 px-5 py-4 hover:bg-black/3 transition-colors border-b border-black/4 last:border-0 text-left">
+                                            className="w-full flex items-center gap-3 px-5 py-5 hover:bg-black/3 transition-colors border-b border-black/4 last:border-0 text-left">
                                             <div className="min-w-0">
                                                 <p className="text-lg font-semibold text-black truncate">{song.title}</p>
                                                 <p className="text-sm text-black/40 truncate">{song.artist}</p>
@@ -132,14 +129,14 @@ export default function LyricChangerPage() {
                             )}
 
                             {/* Most requested */}
-                            <div className="mt-4 p-5 rounded-2xl bg-[#8b1a1a]/4 border border-[#8b1a1a]/10">
-                                <p className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] mb-4">Most Requested</p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="mt-4 p-7 rounded-2xl bg-[#8b1a1a]/4 border border-[#8b1a1a]/10">
+                                <p className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a] mb-6">Most Requested</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {FAVORITE_SONGS.map(song => (
                                         <button key={song.id} type="button" onClick={() => handleSelectSong(song)}
-                                            className="text-left w-full px-5 py-4 rounded-2xl bg-white border border-black/8 hover:border-[#8b1a1a]/30 hover:shadow-sm transition-all group">
+                                            className="text-left w-full px-5 py-6 rounded-2xl bg-white border border-black/8 hover:border-[#8b1a1a]/30 hover:shadow-sm transition-all group">
                                             <p className="text-base font-semibold text-black/80 group-hover:text-[#8b1a1a] transition-colors">{song.title}</p>
-                                            <p className="text-xs text-black/35 mt-0.5">{song.artist}</p>
+                                            <p className="text-xs text-black/35 mt-1.5">{song.artist}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -150,10 +147,10 @@ export default function LyricChangerPage() {
                     {/* Selected song */}
                     {selectedSong && (
                         <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4 p-5 rounded-2xl bg-white border border-[#8b1a1a]/20 shadow-sm" style={{boxShadow: "0 0 0 4px rgba(139,26,26,0.04)"}}>
+                            <div className="flex items-center gap-4 p-7 rounded-2xl bg-white border border-[#8b1a1a]/20 shadow-sm" style={{boxShadow: "0 0 0 4px rgba(139,26,26,0.04)"}}>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-lg font-semibold text-black truncate">{selectedSong.title}</p>
-                                    <p className="text-base text-black/45 truncate">{selectedSong.artist}</p>
+                                    <p className="text-xl font-semibold text-black truncate">{selectedSong.title}</p>
+                                    <p className="text-base text-black/45 truncate mt-1">{selectedSong.artist}</p>
                                 </div>
                                 <button type="button" onClick={() => setSelectedSong(null)} className="p-2 rounded-xl hover:bg-black/5 transition-colors">
                                     <X className="size-4 text-black/35" />
@@ -164,8 +161,8 @@ export default function LyricChangerPage() {
                 </div>
             </div>
 
-            {/* Bottom button */}
-            <div className="flex-shrink-0 flex justify-center px-5 pb-6 pt-3 bg-[#f0ede8] border-t border-black/6">
+            {/* Bottom button — more padding */}
+            <div className="flex-shrink-0 flex justify-center px-5 pb-10 pt-4 bg-[#f0ede8] border-t border-black/6">
                 <button
                     type="button"
                     disabled={!selectedSong || isButtonLoading}
@@ -175,8 +172,7 @@ export default function LyricChangerPage() {
                     {isButtonLoading ? 'Loading…' : 'Next'}
                 </button>
             </div>
-            
-            <div className="h-28" />
+
         </main>
     );
 }
