@@ -461,6 +461,13 @@ function ChangeLyricsPageContent() {
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
                                 ← Back
                             </Link>
+                            <button
+        type="button"
+        disabled={loadingButton !== null}
+        onClick={handleNextStep}
+        className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 shadow-sm">
+        {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-4" /></>}
+    </button>
                         </div>
                     </div>
                 </div>
