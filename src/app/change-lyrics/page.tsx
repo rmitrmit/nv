@@ -455,7 +455,7 @@ function ChangeLyricsPageContent() {
             {/* Fixed bottom bar — undo/reset + nav */}
             {!isLoading && !isError && (
                 <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2 pointer-events-auto">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-24 md:pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2 pointer-events-auto">
                         {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
