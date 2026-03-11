@@ -489,7 +489,7 @@ function ChangeLyricsPageContent() {
             <div className="h-44" />
             {/* Back confirmation modal */}
             {showBackConfirm && (
-                <div className={`${roboto.className} fixed inset-0 z-50 flex items-center justify-center px-6`} onClick={() => setShowBackConfirm(false)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowBackConfirm(false)}>
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
                     <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-1">
