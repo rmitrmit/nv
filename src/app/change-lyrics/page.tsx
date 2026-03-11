@@ -420,11 +420,11 @@ function ChangeLyricsPageContent() {
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <input type="text" value={replaceTerm} onChange={e => setReplaceTerm(e.target.value)}
                                     placeholder="Word to replace…"
-                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
+                                    className="flex-1 h-16 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
                                 <input type="text" value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
                                     onKeyDown={handleReplaceWithKeyDown}
                                     placeholder="Replace with…"
-                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
+                                    className="flex-1 h-16 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
                                 <button type="button" onClick={executeReplaceAll}
                                     className="h-14 px-7 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors whitespace-nowrap">
                                     Replace all
@@ -455,7 +455,7 @@ function ChangeLyricsPageContent() {
             {/* Fixed bottom bar — undo/reset + nav */}
             {!isLoading && !isError && (
                 <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-24 md:pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2 pointer-events-auto">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 pb-8 pt-4 bg-gradient-to-t from-[#f0ede8] via-[#f0ede8]/95 to-transparent flex flex-col gap-2 pointer-events-auto">
                         {/* Undo / Reset row */}
                         <div className="flex gap-2">
                             <button type="button" onClick={handleUndo} disabled={history.length <= 1}
@@ -480,7 +480,7 @@ function ChangeLyricsPageContent() {
                                 type="button"
                                 disabled={loadingButton !== null}
                                 onClick={handleNextStep}
-                                className="flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md"
+                                className="flex-none px-5 md:flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md"
                             >
                                 {loadingButton === 'review' ? 'Processing…' : <>Review Order — <span className="font-bold">US${cost}</span> <ChevronRight className="size-4" /></>}
                             </button>
