@@ -88,7 +88,7 @@ export default function LyricChangerPage() {
                         Let&apos;s get your lyric change started!
                     </h1>
                     <p className="mt-5 text-base text-black/50">
-                        Pick the song you&apos;d like to personalise.
+                        Search for the song you&apos;d like to personalise.
                     </p>
                 </div>
 
