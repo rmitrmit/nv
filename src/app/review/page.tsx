@@ -27,7 +27,7 @@ function OrderReviewPageContent() {
     const [cost, setCost] = useState(0);
     const [specialRequests, setSpecialRequests] = useState("");
     const [productOptions, setProductOptions] = useState<ProductOption[]>([
-        { id: "delivery-standard", title: "Standard Delivery", description: "2–7 business days", price: 0, isSelected: true, type: "delivery" },
+        { id: "delivery-standard", title: "Standard Delivery", description: "2 business days", price: 0, isSelected: true, type: "delivery" },
         { id: "delivery-rush", title: "Rush Delivery", description: "1 business day", price: 15, originalPrice: 20, isSelected: false, type: "delivery" },
     ]);
 
