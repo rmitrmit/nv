@@ -3,6 +3,7 @@
 
 import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Info, ChevronRight, Eraser, RotateCcw } from 'lucide-react';
 import React from 'react';
 import LyricsEditor from '@/components/LyricsEditor';
@@ -250,8 +251,6 @@ function ChangeLyricsPageContent() {
     };
 
     const replaceAllTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [showBackConfirm, setShowBackConfirm] = useState(false);
-    const [showResetConfirm, setShowResetConfirm] = useState(false);
     const executeReplaceAll = useCallback(() => {
         if (replaceAllTimeoutRef.current) clearTimeout(replaceAllTimeoutRef.current);
         const cleanReplaceTerm = replaceTerm.trim();
@@ -318,40 +317,13 @@ function ChangeLyricsPageContent() {
             {/* Sticky word count + cost bar */}
             {!isLoading && (
                 <div className="sticky top-0 z-50 bg-[#f0ede8]/95 backdrop-blur-md border-b border-black/6">
-                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-between gap-3">
-                        <div className="relative group flex items-center gap-3">
+                    <div className="mx-auto max-w-5xl px-6 md:px-12 lg:px-20 h-16 flex items-center justify-center gap-3">
+                        {/* PRICING HIDDEN — flat fee mode. Restore group+tooltip+cost when tiered pricing returns */}
+                        <div className="flex items-center gap-2">
                             <p className="text-base font-semibold text-black/50">
                                 {totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed
                             </p>
-                            <div className="w-px h-4 bg-black/10" />
-                            <div className="flex items-center gap-1 cursor-help">
-                                <p className="text-base font-bold text-[#8b1a1a]">US${cost}</p>
-                                <Info className="size-4 text-[#8b1a1a]/50" />
-                            </div>
-                            {/* Pricing tooltip */}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 p-4 bg-white border border-black/8 rounded-2xl shadow-xl opacity-0 translate-y-1 pointer-events-none transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-50 text-left">
-                                <p className="text-sm font-bold text-black mb-3">Pricing tiers</p>
-                                <ul className="space-y-1.5 text-sm text-black/60">
-                                    {[['1–3 words', '45', totalWordChanges <= 3 && totalWordChanges > 0],
-                                      ['4–10 words', '85', totalWordChanges > 3 && totalWordChanges <= 10],
-                                      ['11–20 words', '125', totalWordChanges > 10 && totalWordChanges <= 20],
-                                      ['20+ words', '165', totalWordChanges > 20]
-                                    ].map(([label, price, active]) => (
-                                        <li key={label as string} className={`flex justify-between px-2 py-1 rounded-lg ${active ? 'bg-[#8b1a1a]/8 text-[#8b1a1a] font-semibold' : ''}`}>
-                                            <span>{label as string}</span><span>US${price as string}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
                         </div>
-                        <button
-                            type="button"
-                            disabled={loadingButton !== null}
-                            onClick={handleNextStep}
-                            className="flex-shrink-0 h-10 px-4 rounded-2xl bg-[#8b1a1a] text-white text-sm font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-                        >
-                            {loadingButton === 'review' ? 'Processing…' : <>Review — US${cost} <ChevronRight className="size-3.5" /></>}
-                        </button>
                     </div>
                 </div>
             )}
@@ -367,11 +339,7 @@ function ChangeLyricsPageContent() {
                                 {songTitle && <p className="text-lg font-semibold text-black truncate">{songTitle}</p>}
                                 {songArtist && <p className="text-base text-black/45 truncate">{songArtist}</p>}
                             </div>
-                            {totalWordChanges > 0 && (
-                                <div className="flex-shrink-0 px-3 py-1.5 rounded-full bg-[#8b1a1a]/10 border border-[#8b1a1a]/20">
-                                    <p className="text-sm font-bold text-[#8b1a1a]">{totalWordChanges} {totalWordChanges === 1 ? 'word' : 'words'} changed</p>
-                                </div>
-                            )}
+                            {/* PRICING HIDDEN — word change badge hidden in flat fee mode */}
                         </div>
                     )}
                 </div>
@@ -390,7 +358,7 @@ function ChangeLyricsPageContent() {
 
                         {/* Lyrics editor */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Edit your desired lyrics in the text editor below</label>
+                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Lyrics</label>
                             <LyricsEditor
                                 value={formValues.lyrics}
                                 originalValue={originalLyricsText}
@@ -416,15 +384,15 @@ function ChangeLyricsPageContent() {
 
                         {/* Replace all */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Batch replace</label>
+                            <label className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Find & Replace</label>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <input type="text" value={replaceTerm} onChange={e => setReplaceTerm(e.target.value)}
                                     placeholder="Word to replace…"
-                                    className="flex-1 h-16 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
+                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
                                 <input type="text" value={replaceWith} onChange={e => setReplaceWith(e.target.value)}
                                     onKeyDown={handleReplaceWithKeyDown}
                                     placeholder="Replace with…"
-                                    className="flex-1 h-16 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
+                                    className="flex-1 h-14 px-5 rounded-2xl border border-black/10 bg-white text-base text-black placeholder:text-black/25 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black/20 transition-all" />
                                 <button type="button" onClick={executeReplaceAll}
                                     className="h-14 px-7 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-colors whitespace-nowrap">
                                     Replace all
@@ -463,26 +431,28 @@ function ChangeLyricsPageContent() {
                                 <RotateCcw className="size-4" /> Undo
                             </button>
                             <button type="button"
-                                onClick={() => setShowResetConfirm(true)}
+                                onClick={() => {
+                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
+                                    setLyrics(generateLyricsData(originalLyricsText));
+                                    toast.success("Reset to original lyrics");
+                                }}
                                 className="flex-1 h-12 rounded-2xl border border-black/12 bg-white/80 backdrop-blur-sm text-base font-medium text-black/50 hover:text-black hover:border-black/20 transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <Eraser className="size-4" /> Reset all
                             </button>
                         </div>
                         {/* Back + Review */}
                         <div className="flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowBackConfirm(true)}
+                            <Link href="/"
                                 className="h-14 px-6 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black hover:border-black/25 transition-all flex items-center justify-center">
                                 ← Back
-                            </button>
+                            </Link>
                             <button
                                 type="button"
                                 disabled={loadingButton !== null}
                                 onClick={handleNextStep}
-                                className="flex-none px-5 md:flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md"
+                                className="flex-1 h-14 rounded-2xl bg-[#8b1a1a] text-white text-lg font-semibold hover:bg-[#7a1616] disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md"
                             >
-                                {loadingButton === 'review' ? 'Processing…' : <>Review Order — <span className="font-bold">US${cost}</span> <ChevronRight className="size-4" /></>}
+                                {loadingButton === 'review' ? 'Processing…' : <>Review Order <ChevronRight className="size-4" /></>}
                             </button>
                         </div>
                     </div>
@@ -491,63 +461,6 @@ function ChangeLyricsPageContent() {
 
             {/* Spacer for fixed button */}
             <div className="h-44" />
-            {/* Reset All confirmation modal */}
-            {showResetConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowResetConfirm(false)}>
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-                    <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-                        <div className="flex flex-col gap-1">
-                            <h3 className="text-lg font-bold text-black">Reset all lyrics?</h3>
-                            <p className="text-sm text-black/50">This will undo all your changes and restore the original lyrics. This cannot be undone.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowResetConfirm(false)}
-                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black transition-all">
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setFormValues(prev => ({ ...prev, lyrics: originalLyricsText }));
-                                    setLyrics(generateLyricsData(originalLyricsText));
-                                    setShowResetConfirm(false);
-                                    toast.success("Reset to original lyrics");
-                                }}
-                                className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-all">
-                                Reset
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Back confirmation modal */}
-            {showBackConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowBackConfirm(false)}>
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-                    <div className="relative bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-                        <div className="flex flex-col gap-1">
-                            <h3 className="text-lg font-bold text-black">Lose your progress?</h3>
-                            <p className="text-sm text-black/50">Going back will discard all your lyric edits. This cannot be undone.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowBackConfirm(false)}
-                                className="flex-1 h-12 rounded-2xl border border-black/12 bg-[#f0ede8] text-base font-semibold text-black/50 hover:text-black transition-all">
-                                Keep editing
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => router.push('/')}
-                                className="flex-1 h-12 rounded-2xl bg-[#8b1a1a] text-white text-base font-semibold hover:bg-[#7a1616] transition-all">
-                                Go back
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </main>
     );
 }

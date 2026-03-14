@@ -135,7 +135,7 @@ function OrderReviewPageContent() {
                         {distinctChangedWords.length} {distinctChangedWords.length === 1 ? 'word' : 'words'} changed
                     </p>
                     <div className="w-px h-4 bg-black/10" />
-                    <p className="text-base font-bold text-[#8b1a1a]">US${calculateTotal().toFixed(2)}</p>
+                    {/* PRICING HIDDEN — flat fee mode */}
                 </div>
             </div>
 
@@ -216,53 +216,7 @@ function OrderReviewPageContent() {
                         </div>
                     )}
 
-                    {/* Delivery options */}
-                    <div className="flex flex-col gap-3">
-                        <p className="text-sm font-bold tracking-[0.18em] uppercase text-[#8b1a1a]/70">Delivery</p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            {productOptions.filter(p => p.type === "delivery").map(product => (
-                                <button
-                                    key={product.id}
-                                    type="button"
-                                    onClick={() => toggleProductSelection(product.id)}
-                                    className={`flex-1 text-left p-5 rounded-2xl border-2 transition-all ${
-                                        product.isSelected
-                                            ? 'border-[#8b1a1a] bg-[#8b1a1a]/4'
-                                            : 'border-black/8 bg-white hover:border-black/20'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className={`text-base font-semibold mb-0.5 ${product.isSelected ? 'text-[#8b1a1a]' : 'text-black'}`}>
-                                                {product.title}
-                                            </p>
-                                            <p className="text-sm text-black/45">{product.description}</p>
-                                        </div>
-                                        <div className="text-right flex-shrink-0">
-                                            {product.price === 0 ? (
-                                                <p className="text-base font-bold text-black/40">Free</p>
-                                            ) : (
-                                                <div>
-                                                    <p className="text-base font-bold text-black">+US${product.price.toFixed(2)}</p>
-                                                    {product.originalPrice && (
-                                                        <p className="text-sm text-black/30 line-through">US${product.originalPrice.toFixed(2)}</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {product.isSelected && (
-                                        <div className="mt-3 flex items-center gap-1.5">
-                                            <div className="size-4 rounded-full bg-[#8b1a1a] flex items-center justify-center">
-                                                <Check className="size-2.5 text-white" strokeWidth={3} />
-                                            </div>
-                                            <span className="text-xs font-semibold text-[#8b1a1a]">Selected</span>
-                                        </div>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    {/* PRICING HIDDEN — delivery options hidden in flat fee mode. Restore for tiered pricing. */}
 
                 </div>
             </div>
@@ -285,7 +239,7 @@ function OrderReviewPageContent() {
                         >
                             {isLoading ? 'Processing…' : <>
                                 <PackageCheck className="size-5" />
-                                Checkout — <span className="font-bold">US${calculateTotal().toFixed(2)}</span>
+                                Place order
                                 <ChevronRight className="size-4" />
                             </>}
                         </button>
